@@ -19,3 +19,13 @@ Node/npm commands launched from app directories initially selected an older syst
 `render.yaml` explicitly selects a Free Node Web Service, applies migrations during startup, binds to Render's port/interface, and takes private Neon connection/frontend-origin settings from the deployment environment. The Render/Neon pilot guide documents direct TLS database access, a small connection pool, same-origin Pages cookie forwarding, optional Google login, and SMTP restrictions on Render Free. No authentication-verification bypass was introduced.
 
 Docker image execution and actual Render/Neon provisioning are not verified locally. Remote repositories, commits, credentials, and deployments were not created or published. GitHub CI was configured but not executed on GitHub. Historical combined-workspace verification is retained separately under `docs/PREVIOUS_WORKSPACE_VERIFICATION.md`.
+
+## Google callback validation fix — 2026-10-13
+
+The deployed callback returned `400 VALIDATION_FAILED` when given Google's standard query metadata. The new regression test first failed with `property scope/authuser/prompt/hd/iss should not exist`. The callback DTO now accepts bounded optional metadata strings; signed state, code validation, provider identity verification, and explicit account linking remain required.
+
+- Focused regression: 3 passing tests after the expected red failure.
+- Backend: 57 unit tests and 18 API/migration tests passed, including successful Google callbacks with metadata and rejection of mismatched state with metadata. API tests used only the isolated local `arena_update_test` database and fake Google transport.
+- Backend build, type checks, lint, format checks, and offline OpenAPI generation passed.
+- The independent frontend contract snapshot and generated types were updated. All 40 frontend tests, type checks, lint, and format checks passed.
+- Completing real Google login still requires verification after Render deploys the fix.

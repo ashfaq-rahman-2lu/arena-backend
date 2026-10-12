@@ -770,15 +770,31 @@ test("Google sign-in and linking require validated state and never link by email
     const google = request.agent(httpServer(app));
     let start = await google.get(base + "/auth/google").expect(302);
     let state = new URL(start.headers.location).searchParams.get("state");
-    await google
+    const invalidState = await google
       .get(base + "/auth/google/callback")
-      .query({ state: "wrong-state", code: "code" })
+      .query({
+        state: "0".repeat(64),
+        code: "code",
+        scope: "openid email profile",
+        authuser: "0",
+        prompt: "consent",
+      })
       .expect(400);
+    assert.equal(
+      readResponse<ApiError>(invalidState, "ApiError").code,
+      "OAUTH_INVALID",
+    );
     start = await google.get(base + "/auth/google").expect(302);
     state = new URL(start.headers.location).searchParams.get("state");
     await google
       .get(base + "/auth/google/callback")
-      .query({ state, code: "code" })
+      .query({
+        state,
+        code: "code",
+        scope: "openid email profile",
+        authuser: "0",
+        prompt: "consent",
+      })
       .expect(302);
     assert.equal(
       required(

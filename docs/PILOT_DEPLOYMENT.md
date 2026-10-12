@@ -38,6 +38,8 @@ For a pilot without an email service, configure the existing Google sign-in inte
 
 The callback must use the Pages domain because OAuth state and session cookies pass through its proxy. The API redirects successful login back to its configured `FRONTEND_URL`.
 
+Google callbacks include optional `scope`, `authuser`, `prompt`, `hd`, and `iss` query metadata. The callback accepts bounded strings for these fields while still validating the required state/code and signed state cookie. Identity and account linking use Google's verified userinfo response, not callback metadata. A `400 VALIDATION_FAILED` immediately after consent on an older deployment can mean its callback DTO rejects these standard fields; deploy the callback validation fix and restart sign-in from the frontend.
+
 Keep `OPENAI_API_KEY` unset for a pilot that must avoid paid vision calls. Manual score entry remains available; scorecard extraction needs separately funded/configured credentials.
 
 ## Free-service behavior

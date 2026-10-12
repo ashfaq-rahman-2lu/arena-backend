@@ -70,4 +70,36 @@ export class GoogleCallbackQuery {
   @MinLength(1)
   @MaxLength(4096)
   code!: string;
+
+  // Google adds these fields to successful authorization callbacks. Identity
+  // and account linking still use the verified provider response, not metadata.
+  @ApiPropertyOptional({ maxLength: 4096 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  scope?: string;
+
+  @ApiPropertyOptional({ maxLength: 32 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  authuser?: string;
+
+  @ApiPropertyOptional({ maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  prompt?: string;
+
+  @ApiPropertyOptional({ maxLength: 253 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(253)
+  hd?: string;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  iss?: string;
 }
