@@ -1,0 +1,18 @@
+---
+description: Validated configuration, centralized errors, logging, and application lifecycle
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# Configuration, errors, and lifecycle
+
+- Use `@nestjs/config` with typed configuration and startup validation. Limit direct environment reads to configuration factories and explicit process entry points; inject configuration into services.
+- Validate required URLs, ports, positive rate limits, session secrets, environment values, and production cookie requirements before serving traffic.
+- Validate complete credentials for enabled integrations. Explicitly represent optional capabilities so startup can succeed when an optional integration is intentionally disabled.
+- Validate configuration through application bootstrap, not only the HTTP entry point; tests and OpenAPI generation must use explicit valid configuration too.
+- Throw typed application or domain errors; use Nest HTTP exceptions at the transport boundary and a global exception filter for consistent mapping.
+- Define a named API error model with stable status/code/message fields. Deliberately map missing resources, validation failures, denied access, stale writes, uniqueness conflicts, and unavailable integrations.
+- Return safe messages for unexpected errors. Log redacted diagnostics with request/correlation IDs; never expose stacks, SQL, credentials, or arbitrary provider responses to clients.
+- Await asynchronous work or explicitly supervise background work. Never swallow errors or create unhandled promises.
+- Use injected loggers and structured events rather than scattered `console.log` calls or newly constructed loggers per request.
+- Enable shutdown hooks and close database connections and integration resources. Provide distinct readiness and liveness behavior when required by deployment.

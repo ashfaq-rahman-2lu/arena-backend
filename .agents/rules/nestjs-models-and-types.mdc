@@ -1,0 +1,35 @@
+---
+description: Explicit backend models, parameter types, return types, and strict TypeScript
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# Models and explicit types
+
+- Declare named domain models, request DTOs, response DTOs, integration payloads, and repository contracts in clearly named files owned by their feature.
+- Use classes for Nest HTTP DTOs; use interfaces or type aliases for domain and application models. Treat Prisma-generated records as persistence types and map them explicitly.
+- Model tournament format, stage, status, token purpose, and audit action with enums or literal unions, not unconstrained strings. Use discriminated unions for states with different required fields.
+- Every function, method, overload, arrow function, test callback, and higher-order callback must explicitly annotate every parameter and its return type. This applies to private helpers and tests as well as public APIs.
+- Annotate destructured, optional, defaulted, and rest parameters. Annotate async returns as `Promise<T>`, side-effect-only returns as `void` or `Promise<void>`, and non-returning functions as `never`.
+- Constructors and setters are exempt only from return annotations because TypeScript syntax forbids them; their parameters remain explicitly typed. Getters require return annotations.
+- Use named result models instead of large inline object types or `ReturnType` / `Parameters` chains tied to implementation details. Reuse schema-inferred integration types when they remain explicit named contracts.
+- Keep strict TypeScript enabled. Do not use explicit or implicit `any`, `as unknown as`, or non-null assertions to bypass missing contracts or checks.
+- Receive untrusted values as `unknown`; validate or narrow them before accessing fields. Narrow caught errors with type guards rather than casting them.
+- Give collections and mutable fields explicit types where inference would hide the intended model. State nullability deliberately; do not treat missing and null values as interchangeable.
+- Never cast Prisma records, JSON, or provider responses into domain models without validating and mapping them.
+- Enforce these conventions with TypeScript-aware linting, including explicit function return types and no explicit `any`; configure callbacks so inferred signatures do not bypass the rule.
+
+```typescript
+export interface TournamentSummary {
+  id: string;
+  name: string;
+}
+
+async function listTournaments(ownerId: string): Promise<TournamentSummary[]> {
+  const records: TournamentRecord[] = await repository.listByOwner(ownerId);
+  return records.map((record: TournamentRecord): TournamentSummary => ({
+    id: record.id,
+    name: record.name,
+  }));
+}
+```

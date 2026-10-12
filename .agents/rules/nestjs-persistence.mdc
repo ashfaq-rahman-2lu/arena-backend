@@ -1,0 +1,20 @@
+---
+description: Prisma repositories, database invariants, transaction safety, and bounded queries
+globs: "src/**/*.ts,prisma/**,test/**"
+alwaysApply: false
+---
+
+# Persistence and consistency
+
+- Use one injectable Prisma database provider and feature repositories with explicit parameter and return types. Inject the provider; do not create Prisma clients per request.
+- Define schema changes in Prisma and committed SQL migrations. Never change production schema through `db push`, reset commands, or untracked manual SQL.
+- Enforce durable invariants using foreign keys, unique constraints, and appropriate check constraints in addition to application validation.
+- Wrap operations that must succeed together in one transaction. Repository methods called inside it must use the supplied `Prisma.TransactionClient`, not the global client.
+- Serialize competing writes to a tournament aggregate and reject stale tournament and match revisions. Keep ownership verification, relevant reads, updates, and audit records within the transaction boundary.
+- Require an explicit tested workflow for destructive downstream corrections: preview the impact, bind confirmation to the result and relevant revisions, and record the removed state atomically.
+- Keep transactions short and bounded. Never make email, OAuth, vision, or other network calls inside a database transaction.
+- Use parameterized Prisma queries or tagged raw SQL. Never concatenate untrusted input into SQL.
+- Paginate every collection endpoint with validated limits and deterministic ordering. Load only the columns and relations required by that use case; do not reuse full aggregate loading for every list query.
+- Avoid N+1 queries and sequential per-row writes when a correct bulk operation is available. Add indexes for actual query patterns and measure expensive queries before optimizing.
+- Use a bounded retry only for identified transient conflicts, with idempotency or proof that retries cannot duplicate side effects. Do not retry arbitrary failures.
+- Specify behavior when persistence succeeds but an external side effect fails. Use a tested retry or outbox workflow when reliable delivery is required.

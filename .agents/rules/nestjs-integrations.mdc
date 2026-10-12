@@ -1,0 +1,17 @@
+---
+description: Replaceable external adapters and safe score extraction
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# External integrations and extraction
+
+- Define explicit typed ports for email, OAuth, vision, and other integrations. Register production adapters through Nest providers and replace them at the provider boundary in tests.
+- Apply finite request and connection timeouts. Validate provider responses and translate transport failures into stable application errors.
+- Do not mutate global `fetch` or replace methods on live singleton providers in new tests; inject fake adapters or transports before creating the application.
+- Do not make paid API calls, send real email, or contact live OAuth providers during automated tests.
+- Validate uploaded image size, decoded format, pixel count, and animation/frame limits before calling vision. Do not trust the filename or supplied MIME type.
+- Treat images and model output as untrusted evidence. Validate extracted fields and distinguish ambiguous, missing, and zero scores.
+- Extraction returns a suggestion only. Persist a result only through an authorized, validated save workflow with concurrency checks and explicit user confirmation where required.
+- Keep manual score entry available when vision is unavailable. Test timeout, malformed output, provider errors, ambiguous identities, and non-persistence of suggestions.
+- Do not log image bytes or include credentials in provider diagnostics. Record safe latency, failure, and usage metadata.

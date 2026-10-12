@@ -1,0 +1,71 @@
+{
+  "name": "@arena/backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsc && concurrently --kill-others -n compiler,server \"tsc --watch --preserveWatchOutput\" \"node --watch dist/src/main.js\"",
+    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "start": "node dist/src/main.js",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "test:e2e": "npm run build && node --test dist/test/api/*.test.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "npm run build && node dist/prisma/seed.js",
+    "openapi": "npm run build && node dist/src/openapi.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:browser-server": "npm run build && node dist/test/browser-server.js",
+    "test:tooling": "node --test scripts/tooling.test.mts"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.2.7",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.2.7",
+    "@nestjs/platform-express": "11.2.7",
+    "@nestjs/swagger": "11.4.7",
+    "@prisma/client": "6.19.0",
+    "argon2": "0.44.0",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.4",
+    "cookie-parser": "1.4.7",
+    "dotenv": "17.4.2",
+    "helmet": "8.3.0",
+    "nodemailer": "10.1.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "sharp": "0.35.5",
+    "zod": "4.6.6",
+    "prisma": "6.19.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "11.2.7",
+    "@types/cookie-parser": "1.4.10",
+    "@types/express": "5.0.6",
+    "@types/multer": "2.3.0",
+    "@types/node": "24.19.2",
+    "@types/nodemailer": "7.0.12",
+    "@types/supertest": "6.0.3",
+    "ajv": "8.20.0",
+    "supertest": "7.3.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "eslint": "9.39.5",
+    "prettier": "3.9.10",
+    "typescript-eslint": "8.71.1",
+    "concurrently": "9.2.5"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.0",
+      "effect": "^3.20.0"
+    },
+    "@nestjs/swagger": {
+      "js-yaml": "^5.4.1"
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,0 +1,20 @@
+---
+description: Required feature architecture and dependency injection for the NestJS backend
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# NestJS architecture
+
+- Design against the agreed requirements and these standards. Existing behavior is not a requirement merely because it exists. Document intentional behavior changes and express the desired behavior in tests before implementation.
+- Organize by feature: auth, tournaments, matches, public viewing, and extraction. Each feature owns its module, controllers, services, DTOs, models, repositories, and tests.
+- Name Nest artifacts explicitly: `AuthController`, `AuthService`, `TournamentsRepository`, and `DatabaseService`; use matching kebab-case filenames.
+- Keep controllers limited to validated HTTP input, authenticated actor extraction, service delegation, and response mapping. Business workflows belong in application services.
+- Keep competition calculations in pure domain functions: no NestJS, Prisma, Express, environment reads, network calls, or mutable application state.
+- Give services one cohesive responsibility. Separate session management, email delivery, OAuth, and account workflows rather than combining them in one auth service.
+- Access persistence through feature repositories. Keep domain models independent of Prisma records and HTTP DTOs.
+- Use constructor injection. Define symbol or abstract-class tokens for replaceable integrations; never instantiate integration clients in business workflows.
+- Register each provider in one owning module, export only its public providers, and import that module where required.
+- Avoid circular dependencies; change responsibilities or introduce a narrow application boundary instead of routinely using `forwardRef()`.
+- Use singleton providers by default. Request or transient scope requires a concrete lifetime requirement; never store user-specific state in singleton fields.
+- Reserve global modules for cross-cutting infrastructure. Do not introduce microservices, events, queues, caching, or lazy loading without a documented requirement and tests for their failure modes.

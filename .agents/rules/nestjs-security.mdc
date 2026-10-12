@@ -1,0 +1,18 @@
+---
+description: Authentication, authorization, cookies, CSRF, token handling, and rate limits
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# Security
+
+- Protect routes by default with an authentication guard. Public routes must be explicitly marked and reviewed; public does not mean exempt from input validation or applicable CSRF protection.
+- Authorize access to each resource independently of authentication. Scope reads and writes to the authenticated owner, including history and extraction; never trust an owner ID supplied by the client.
+- Choose and document an authentication strategy for the required clients. Cookie sessions and JWTs are architectural choices; do not adopt JWT solely because an example uses it.
+- For browser cookie sessions, require signed, HttpOnly cookies, secure production cookies, deliberate SameSite settings, session expiry/revocation, CSRF validation on unsafe methods, and an exact allowed-origin policy.
+- Hash passwords using Argon2id; store only hashes of random session/reset/verification tokens. Consume one-time tokens atomically and revoke appropriate sessions after a password reset.
+- Validate OAuth state, expiry, callback parameters, and provider identity. Require explicit authenticated account linking rather than merging accounts by matching email alone.
+- Apply validated positive rate limits to login, registration, token delivery, extraction, and other expensive endpoints. Use shared limiter storage before deploying multiple API processes.
+- Configure proxy trust for the actual trusted ingress so client identity used by rate limiting cannot be supplied arbitrarily.
+- Never expose passwords, password hashes, raw tokens, cookies, API keys, or private identity records through responses or logs.
+- Keep dependency and security configuration changes reviewable. Add negative tests for authentication, ownership, CSRF, token reuse, and rate-limit enforcement.

@@ -1,0 +1,12 @@
+export const games = ["EFOOTBALL", "CODM"] as const;
+export const formats = ["LEAGUE", "WORLD_CUP"] as const;
+export const statuses = ["DRAFT", "ACTIVE", "COMPLETED"] as const;
+export const matchStages = ["LEAGUE", "GROUP", "KNOCKOUT"] as const;
+export const competitionStages = ["SETUP", ...matchStages] as const;
+export const auditActions = ["SCORE", "CLEAR", "RESET"] as const;
+export type Game = (typeof games)[number];
+export type CompetitionFormat = (typeof formats)[number];
+export type CompetitionStatus = (typeof statuses)[number];
+export type MatchStage = (typeof matchStages)[number];
+export type CompetitionStage = (typeof competitionStages)[number];
+export type AuditAction = (typeof auditActions)[number];

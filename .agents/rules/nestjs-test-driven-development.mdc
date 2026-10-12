@@ -1,0 +1,22 @@
+---
+description: Mandatory red-green-refactor workflow for backend behavior changes
+globs: "**"
+alwaysApply: false
+---
+
+# Test-driven development
+
+- For every feature, behavior change, or bug fix, write or update the behavior test before writing production implementation. Define the desired behavior from agreed requirements, not from accidental existing behavior.
+- RED: run the focused test and observe failure for the expected missing behavior. A setup error, missing dependency, or unrelated crash is not a valid red phase; fix the harness first.
+- GREEN: implement the smallest coherent change that makes the test pass. Do not write speculative production code ahead of its tests.
+- REFACTOR: improve design and naming while the focused and affected regression tests remain green. For structural work, establish behavioral coverage before moving implementation.
+- Record the test command and expected red failure, then the passing result. Never claim the red phase or a test run happened without executing it.
+- Test observable requirements, boundaries, and invariants. Avoid tests that merely mirror private implementation or assert internal call sequences without a contractual reason.
+- For intentional behavior changes, update affected acceptance tests before implementation and document the new contract; do not keep legacy expectations solely to preserve current behavior.
+- Use pure unit tests for competition rules and `@nestjs/testing` testing modules for DI/service/guard/filter/pipe behavior. Override providers before compiling the module.
+- Use Supertest HTTP tests and real PostgreSQL integration tests for database constraints, transactions, ownership, revision conflicts, and rollback. Mock external integrations through typed providers.
+- Use only a dedicated test database whose name ends in `_test`; enforce this guard before migrations or cleanup. Isolate fixtures so tests do not depend on execution order or shared accounts.
+- Cover success plus meaningful failure cases: invalid input, forbidden access, expired/reused tokens, concurrent writes, stale correction previews, downstream resets, and integration failures.
+- Test callbacks and helpers follow the same explicit parameter and return type rules as production code. The existing `node:test` runner may remain; Nest testing utilities do not require switching to Jest.
+- Do not weaken, skip, or delete failing tests to obtain green results. Revise an expectation only when the agreed contract changes, and explain that change.
+- Rule/documentation-only edits do not require synthetic behavior tests. These standards govern subsequent implementation work; writing the standards does not authorize an unrelated application rewrite.

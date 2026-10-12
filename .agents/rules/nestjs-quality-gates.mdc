@@ -1,0 +1,17 @@
+---
+description: Backend completion checks and rules enforcement
+globs: "**,.github/workflows/**"
+alwaysApply: false
+---
+
+# Completion and enforcement
+
+- Configure backend formatting and TypeScript-aware linting to enforce naming, explicit function return types, no explicit `any`, and unsafe-operation checks; include them in CI once introduced.
+- Keep TypeScript strict checks enabled. Do not suppress type/lint failures with broad disables, casts, or reduced compiler strictness.
+- After the focused TDD cycle, run `npm run typecheck`, `npm run build`, and `npm test`.
+- Run `npm run test:e2e` against a dedicated `_test` PostgreSQL database for HTTP, persistence, auth, or transaction changes. Never substitute a development database.
+- For API changes, run `npm run openapi`, then publish the schema for frontend compatibility checks. Verify generated contracts are current and consistent with runtime responses.
+- For migrations, verify applying committed migrations to a fresh test database and exercise affected constraints. Document migration ordering and any data transformation.
+- Include appropriate lint/format checks when they exist; introduce enforcement tooling test-first through meaningful rule fixtures or a temporary deliberately invalid sample when changing lint configuration.
+- Report what changed, intended behavior changes, the red/green evidence, executed checks, and any checks that could not run. Do not report unexecuted checks as passing.
+- Apply these project rules over conflicting example patterns in the NestJS skill. Translate TypeORM examples to Prisma and choose only architecture mechanisms justified by this project's requirements.

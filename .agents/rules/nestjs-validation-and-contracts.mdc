@@ -1,0 +1,19 @@
+---
+description: Runtime validation, declared DTOs, response mapping, and API contract discipline
+globs: "**/*.ts,openapi.json"
+alwaysApply: false
+---
+
+# Validation and API contracts
+
+- Declare separate request DTO classes for create, update, query, and action inputs, with class-validator rules and Swagger metadata. Reuse shared fields through supported DTO composition.
+- Register a global `ValidationPipe` with `whitelist: true`, `forbidNonWhitelisted: true`, and `transform: true`. Use explicit field transformations rather than broad implicit conversion.
+- Validate bodies, path parameters, query parameters, headers that carry application data, and multipart inputs before passing them into a service. Use appropriate parsing pipes for UUIDs, integers, and booleans.
+- Specify bounds for text, arrays, pagination, numeric values, and uploads. Reject invalid combinations through explicit application or domain validation.
+- Validate third-party JSON at runtime using named schemas; never trust a TypeScript cast. Zod is appropriate at integration boundaries; avoid maintaining conflicting validation definitions for the same HTTP input.
+- Define named response DTOs and map only approved fields. Never return complete Prisma user, session, token, tournament, or audit records from an endpoint.
+- Keep private ownership and audit fields out of public responses. Test the absence of sensitive fields.
+- Declare HTTP status codes, authentication requirements, request schemas, and success/error responses in OpenAPI. Runtime behavior and documentation must agree.
+- Use Nest response handling by default. Restrict Express `Response` access to cookies, redirects, and required headers, using passthrough when returning a normal response body.
+- Maintain the versioned API prefix. For intentional breaking changes, update affected frontend callers, generated contracts, and tests in the same change; version the API when existing consumers need compatibility.
+- Generate `openapi.json` with `npm run openapi`. Publish the schema artifact for the independent frontend repository, which owns its copied schema and generated client. Never edit generated contracts manually.

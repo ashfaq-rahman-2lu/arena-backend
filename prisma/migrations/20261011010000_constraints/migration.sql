@@ -1,0 +1,16 @@
+ALTER TABLE "Tournament" ADD CONSTRAINT "valid_format" CHECK ("format" IN ('LEAGUE','WORLD_CUP'));
+ALTER TABLE "Tournament" ADD CONSTRAINT "valid_game" CHECK ("game" IN ('EFOOTBALL','CODM'));
+ALTER TABLE "Tournament" ADD CONSTRAINT "valid_status" CHECK ("status" IN ('DRAFT','ACTIVE','COMPLETED'));
+ALTER TABLE "Tournament" ADD CONSTRAINT "valid_rules" CHECK ("legs" IN (1,2) AND "winPoints">=0 AND "drawPoints">=0 AND "lossPoints">=0);
+ALTER TABLE "Group" ADD CONSTRAINT "positive_qualification" CHECK ("qualifierCount">=1);
+ALTER TABLE "Match" ADD CONSTRAINT "distinct_opponents" CHECK ("homeId" <> "awayId");
+ALTER TABLE "Match" ADD CONSTRAINT "paired_scores" CHECK (("homeScore" IS NULL) = ("awayScore" IS NULL));
+ALTER TABLE "Match" ADD CONSTRAINT "nonnegative_scores" CHECK ("homeScore">=0 AND "awayScore">=0 AND "homeTiebreak">=0 AND "awayTiebreak">=0);
+ALTER TABLE "Match" ADD CONSTRAINT "paired_tiebreaks" CHECK (("homeTiebreak" IS NULL) = ("awayTiebreak" IS NULL));
+ALTER TABLE "Match" ADD CONSTRAINT "valid_match_winner" CHECK ("winnerId" IS NULL OR "winnerId" IN ("homeId","awayId"));
+ALTER TABLE "Match" ADD CONSTRAINT "valid_match_stage" CHECK ("stage" IN ('LEAGUE','GROUP','KNOCKOUT'));
+CREATE UNIQUE INDEX "Entrant_tournamentId_id_key" ON "Entrant"("tournamentId","id");
+CREATE UNIQUE INDEX "Group_tournamentId_id_key" ON "Group"("tournamentId","id");
+ALTER TABLE "Match" ADD CONSTRAINT "home_same_tournament" FOREIGN KEY ("tournamentId","homeId") REFERENCES "Entrant"("tournamentId","id");
+ALTER TABLE "Match" ADD CONSTRAINT "away_same_tournament" FOREIGN KEY ("tournamentId","awayId") REFERENCES "Entrant"("tournamentId","id");
+ALTER TABLE "Entrant" ADD CONSTRAINT "group_same_tournament" FOREIGN KEY ("tournamentId","groupId") REFERENCES "Group"("tournamentId","id");
