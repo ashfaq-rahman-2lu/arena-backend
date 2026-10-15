@@ -17,7 +17,7 @@ Push this backend repository to your Git host. Connect it to a Free Render Web S
 - Health path: `/api/v1/health`
 - Node version: `24.21.0`
 - `NODE_ENV=production`, `HOST=0.0.0.0`, `COOKIE_SECURE=true`
-- `FRONTEND_URL=https://YOUR-PROJECT.pages.dev` (exact origin, no trailing slash)
+- `FRONTEND_URL=https://arena-tour.pages.dev` (exact origin, no trailing slash)
 - `DATABASE_URL`: the private Neon direct connection string
 - `SESSION_SECRET`: private random value of at least 32 characters; Blueprint can generate it
 - `TRUST_PROXY=true` for Render's managed ingress, which is the one trusted proxy hop

@@ -3,6 +3,7 @@ import {
   ApiCreatedResponse,
   ApiFoundResponse,
   ApiOkResponse,
+  ApiSecurity,
   ApiTags,
 } from "@nestjs/swagger";
 import { Request, Response } from "express";
@@ -56,12 +57,14 @@ export class AuthController {
   }
   @Public()
   @Post("register")
+  @ApiSecurity("csrf")
   @ApiCreatedResponse({ type: MessageResult })
   register(@Body() input: RegistrationInput): Promise<MessageResult> {
     return this.auth.register(input);
   }
   @Public()
   @Post("login")
+  @ApiSecurity("csrf")
   @ApiCreatedResponse({ type: SessionCredentialsView })
   async login(
     @Body() input: LoginInput,
@@ -73,30 +76,38 @@ export class AuthController {
     setCredentials(response, credentials, this.config);
     return { csrf: credentials.csrf };
   }
-  @Public() @Post("verify") @ApiCreatedResponse({ type: MessageResult }) verify(
-    @Body() input: TokenInput,
-  ): Promise<MessageResult> {
+  @Public()
+  @Post("verify")
+  @ApiSecurity("csrf")
+  @ApiCreatedResponse({ type: MessageResult })
+  verify(@Body() input: TokenInput): Promise<MessageResult> {
     return this.tokens.verify(input.token);
   }
   @Public()
   @Post("resend-verification")
+  @ApiSecurity("csrf")
   @ApiCreatedResponse({ type: MessageResult })
   resend(@Body() input: EmailInput): Promise<MessageResult> {
     return this.tokens.send(input.email, "VERIFY");
   }
   @Public()
   @Post("forgot-password")
+  @ApiSecurity("csrf")
   @ApiCreatedResponse({ type: MessageResult })
   forgot(@Body() input: EmailInput): Promise<MessageResult> {
     return this.tokens.send(input.email, "RESET");
   }
   @Public()
   @Post("reset-password")
+  @ApiSecurity("csrf")
   @ApiCreatedResponse({ type: MessageResult })
   reset(@Body() input: ResetInput): Promise<MessageResult> {
     return this.tokens.reset(input.token, input.password);
   }
-  @Post("logout") @ApiCreatedResponse({ type: MessageResult }) async logout(
+  @Post("logout")
+  @ApiSecurity("csrf")
+  @ApiCreatedResponse({ type: MessageResult })
+  async logout(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<MessageResult> {

@@ -29,6 +29,8 @@ npm run dev
 
 API: http://localhost:3000/api/v1. Swagger: http://localhost:3000/api/docs. Development inbox: http://localhost:8025. Optional seeded account: `demo@arena.local` / `ArenaDemo2026!`.
 
+For backend-only Swagger testing, set `FRONTEND_URL=http://localhost:3000` and restart the API. In the same browser, execute `GET /api/v1/auth/session`, then enter the returned `csrf` value in Swagger's **Authorize → csrf** field. Leave cookie authorization empty; the browser sends the signed cookies. Execute login with the demo credentials, then update the authorized CSRF value using the login response before making further mutations. All POST auth operations declare CSRF security so Swagger sends that header, including before login. Restore the frontend origin when testing through the frontend.
+
 Alternatively, `docker compose up --build` runs this API plus its local database and inbox. Start the independent frontend separately.
 
 ## Separate deployment
@@ -39,7 +41,7 @@ Build from this repository root:
 docker build -t arena-backend .
 ```
 
-Supply production settings through the deployment environment: `NODE_ENV=production`, `HOST=0.0.0.0`, your `PORT`, PostgreSQL `DATABASE_URL`, a private `SESSION_SECRET`, `COOKIE_SECURE=true`, and the exact HTTPS `FRONTEND_URL`. Deploy one API instance. Configure SMTP and optional Google/vision credentials on the API only. The container applies committed migrations before starting; with other hosting, run `npm run db:migrate` as a release step, then `npm start` after `npm run build`.
+Supply production settings through the deployment environment: `NODE_ENV=production`, `HOST=0.0.0.0`, your `PORT`, PostgreSQL `DATABASE_URL`, a private `SESSION_SECRET`, `COOKIE_SECURE=true`, and `FRONTEND_URL=https://arena-tour.pages.dev` (no trailing slash). Set this in the backend hosting service's environment variables; `render.yaml` includes this value for Blueprint deployments. Deploy one API instance. Configure SMTP and optional Google/vision credentials on the API only. The container applies committed migrations before starting; with other hosting, run `npm run db:migrate` as a release step, then `npm start` after `npm run build`.
 
 Frontend and API may use sibling HTTPS subdomains, e.g. `app.example.com` and `api.example.com`. Signed HttpOnly cookies use `SameSite=Lax`; credentialed CORS permits only `FRONTEND_URL`. If hosts have different root domains, route `/api` through the frontend's ingress to the separately deployed API to keep browser cookies same-site. Arbitrary cross-site cookie support is not enabled.
 

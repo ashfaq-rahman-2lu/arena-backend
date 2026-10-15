@@ -208,6 +208,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
@@ -319,6 +324,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
@@ -430,6 +440,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
@@ -541,6 +556,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
@@ -652,6 +672,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
@@ -763,6 +788,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
@@ -864,6 +894,11 @@
             }
           }
         },
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
         "tags": [
           "auth"
         ]
