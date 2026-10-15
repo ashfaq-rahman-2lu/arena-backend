@@ -19,6 +19,7 @@ import {
   TournamentSummary,
 } from "./tournament-response.dto";
 import { TournamentAggregate } from "./tournament.models";
+import { text } from "express";
 const include = {
   entrants: { orderBy: [{ name: "asc" }, { id: "asc" }] },
   groups: { orderBy: [{ name: "asc" }, { id: "asc" }] },
@@ -30,6 +31,7 @@ const include = {
       { pairingKey: "asc" },
     ],
   },
+  knockoutTies: { orderBy: { slot: "asc" } },
   rounds: { include: { byes: true }, orderBy: { number: "asc" } },
   ties: true,
   qualification: true,
@@ -69,6 +71,23 @@ function mapAggregate(t: TournamentRecord): TournamentAggregate {
     status: storedValue(t.status, statuses),
     currentStage: storedValue(t.currentStage, competitionStages),
     revision: t.revision,
+    knockoutLegs: t.knockoutLegs,
+    knockoutFinalLegs: t.knockoutFinalLegs,
+    knockoutTies: t.knockoutTies.map(
+      (
+        tie: TournamentRecord["knockoutTies"][number],
+      ): import("../domain/engine").KnockoutTie => ({
+        id: tie.id,
+        roundId: tie.roundId,
+        slot: tie.slot,
+        homeId: tie.homeId,
+        awayId: tie.awayId,
+        legs: tie.legs,
+        homeTiebreak: tie.homeTiebreak,
+        awayTiebreak: tie.awayTiebreak,
+        winnerId: tie.winnerId,
+      }),
+    ),
     legs: t.legs,
     winPoints: t.winPoints,
     drawPoints: t.drawPoints,
@@ -97,6 +116,7 @@ function mapAggregate(t: TournamentRecord): TournamentAggregate {
       (
         m: TournamentRecord["matches"][number],
       ): TournamentAggregate["matches"][number] => ({
+        knockoutTieId: m.knockoutTieId,
         id: m.id,
         stage: storedValue(m.stage, matchStages),
         scope: m.scope,
@@ -117,11 +137,15 @@ function mapAggregate(t: TournamentRecord): TournamentAggregate {
         r: TournamentRecord["rounds"][number],
       ): TournamentAggregate["rounds"][number] => ({
         id: r.id,
+        method: storedValue(r.method, ["MANUAL", "RANDOM", "FIXED"] as const),
         number: r.number,
         byes: r.byes.map(
           (
             b: TournamentRecord["rounds"][number]["byes"][number],
-          ): { entrantId: string } => ({ entrantId: b.entrantId }),
+          ): { entrantId: string; slot: number } => ({
+            entrantId: b.entrantId,
+            slot: b.slot,
+          }),
         ),
       }),
     ),
@@ -140,6 +164,13 @@ function mapAggregate(t: TournamentRecord): TournamentAggregate {
   };
 }
 const auditKeys = new Set([
+  "knockoutTie",
+  "knockoutTies",
+  "knockoutTieId",
+  "legs",
+  "slot",
+  "roundId",
+  "method",
   "id",
   "stage",
   "scope",
@@ -189,7 +220,10 @@ export class TournamentsRepository {
     id: string,
     tx: TransactionClient = this.db,
   ): Promise<TournamentAggregate> {
+    console.log("history", id);
+
     const t = await tx.tournament.findUnique({ where: { id }, include });
+    console.log("", id);
     if (!t)
       throw new ApplicationError("NOT_FOUND", 404, "Tournament not found");
     return mapAggregate(t);
@@ -336,6 +370,54 @@ export class TournamentsRepository {
       totals,
     };
   }
+  async entrantPage(
+    id: string,
+    ownerId: string,
+    query: PageQuery,
+  ): Promise<import("./tournament-response.dto").EntrantPage> {
+    const identity = await this.db.tournament.findUnique({
+      where: { id },
+      select: { ownerId: true },
+    });
+    if (!identity)
+      throw new ApplicationError("NOT_FOUND", 404, "Tournament not found");
+    if (identity.ownerId !== ownerId)
+      throw new ApplicationError(
+        "FORBIDDEN",
+        403,
+        "Only the owner can import teams",
+      );
+    const [items, total] = await this.db.$transaction([
+      this.db.entrant.findMany({
+        where: { tournamentId: id },
+        select: { id: true, name: true, aliases: true },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+      this.db.entrant.count({ where: { tournamentId: id } }),
+    ]);
+    return { items, total, page: query.page, limit: query.limit };
+  }
+  async entrantCreateMany(
+    tx: TransactionClient,
+    data: Prisma.EntrantCreateManyInput[],
+  ): Promise<void> {
+    await tx.entrant.createMany({ data });
+  }
+  async tieCreateMany(
+    tx: TransactionClient,
+    data: Prisma.KnockoutTieCreateManyInput[],
+  ): Promise<void> {
+    await tx.knockoutTie.createMany({ data });
+  }
+  async tieUpdate(
+    tx: TransactionClient,
+    id: string,
+    data: Prisma.KnockoutTieUpdateInput,
+  ): Promise<void> {
+    await tx.knockoutTie.update({ where: { id }, data });
+  }
   async replaceSetup(
     tx: TransactionClient,
     id: string,
@@ -380,6 +462,8 @@ export class TournamentsRepository {
         name: input.name,
         game: input.game,
         format: input.format,
+        knockoutLegs: input.knockoutLegs,
+        knockoutFinalLegs: input.knockoutFinalLegs,
         legs: input.legs,
         winPoints: input.winPoints,
         drawPoints: input.drawPoints,

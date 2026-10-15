@@ -1,11 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { ApplicationError } from "../common/application-error";
 import { PageQuery, TournamentListQuery } from "../common/pagination.dto";
 import { paginate } from "../common/pagination.models";
 import { ConfigurationService } from "../config/configuration.service";
 import {
   Competition,
+  KnockoutTie,
   Entrant,
   Match,
   Round,
@@ -26,6 +27,11 @@ import {
 import { ResultInput } from "../matches/result-request.dto";
 import {
   EntrantSetup,
+  EntrantsAddition,
+  NewEntrant,
+  TournamentNameUpdate,
+  DrawInput,
+  BracketSlot,
   EntrantUpdate,
   GroupSetup,
   PairingInput,
@@ -33,6 +39,8 @@ import {
   TieInput,
 } from "./tournament-request.dto";
 import {
+  DrawPreview,
+  EntrantPage,
   Fixture,
   FixturePage,
   HistoryPage,
@@ -57,6 +65,11 @@ export type PreviewResultResult = {
   matchIds: string[];
   resetQualification: boolean;
 };
+import { additionalFixtures, aggregateOutcome } from "../domain/knockout-rules";
+interface PreparedResult {
+  score: ValidateScoreResult;
+  tie?: KnockoutTie;
+}
 type Tx = TransactionClient;
 @Injectable()
 export class TournamentsService {
@@ -69,7 +82,11 @@ export class TournamentsService {
     userId: string,
     query: PageQuery,
   ): Promise<HistoryPage> {
+    console.log("history", id, query);
+
     await this.owned(id, userId);
+    console.log("history", id, query);
+
     return this.repository.history(id, query);
   }
   load(id: string, client?: Tx): Promise<TournamentAggregate> {
@@ -114,6 +131,20 @@ export class TournamentsService {
     return paginate(fixtures, query.page, query.limit);
   }
   validateSetup(input: SetupInput): void {
+    invariant(
+      input.knockoutFinalLegs <= input.knockoutLegs,
+      "Final legs cannot exceed knockout legs",
+    );
+    if (input.format === "KNOCKOUT") {
+      input.groups = [];
+      input.legs = 1;
+      input.winPoints = 3;
+      input.drawPoints = 1;
+      input.lossPoints = 0;
+      input.entrants.forEach((e: EntrantSetup): void => {
+        e.groupIndex = null;
+      });
+    }
     const keys = input.entrants.map((e: EntrantSetup): string =>
       e.name.toLocaleLowerCase("en-US"),
     );
@@ -309,7 +340,12 @@ export class TournamentsService {
           where: { id },
           data: {
             status: "ACTIVE",
-            currentStage: t.format === "LEAGUE" ? "LEAGUE" : "GROUP",
+            currentStage:
+              t.format === "KNOCKOUT"
+                ? "KNOCKOUT"
+                : t.format === "LEAGUE"
+                  ? "LEAGUE"
+                  : "GROUP",
           },
         });
       },
@@ -420,6 +456,255 @@ export class TournamentsService {
       },
     );
   }
+  async renameTournament(
+    id: string,
+    userId: string,
+    input: TournamentNameUpdate,
+  ): Promise<TournamentView> {
+    return this.mutate(
+      id,
+      userId,
+      input.expectedRevision,
+      async (tx: Tx): Promise<void> => {
+        await this.repository.tournamentUpdate(tx, {
+          where: { id },
+          data: { name: input.name },
+        });
+      },
+    );
+  }
+  entrants(id: string, userId: string, query: PageQuery): Promise<EntrantPage> {
+    return this.repository.entrantPage(id, userId, query);
+  }
+  async addEntrants(
+    id: string,
+    userId: string,
+    input: EntrantsAddition,
+  ): Promise<TournamentView> {
+    return this.mutate(
+      id,
+      userId,
+      input.expectedRevision,
+      async (tx: Tx, t: TournamentAggregate): Promise<void> => {
+        invariant(
+          t.status !== "DRAFT" &&
+            (t.format === "LEAGUE" ||
+              (t.format === "WORLD_CUP" &&
+                t.currentStage === "GROUP" &&
+                !t.qualification)),
+          "Participant additions are locked for this stage",
+        );
+        invariant(
+          t.entrants.length + input.entrants.length <= 256,
+          "Use at most 256 teams",
+        );
+        const names = [
+          ...t.entrants.map((e: Entrant): string =>
+            e.name.toLocaleLowerCase("en-US"),
+          ),
+          ...input.entrants.map((e: NewEntrant): string =>
+            e.name.toLocaleLowerCase("en-US"),
+          ),
+        ];
+        invariant(
+          new Set(names).size === names.length,
+          "Team names must be unique",
+        );
+        const added: Entrant[] = input.entrants.map(
+          (e: NewEntrant): Entrant => {
+            invariant(
+              t.format === "LEAGUE"
+                ? !e.groupId
+                : t.groups.some(
+                    (g: Competition["groups"][number]): boolean =>
+                      g.id === e.groupId,
+                  ),
+              "Choose an existing group for every team",
+            );
+            return {
+              id: randomUUID(),
+              name: e.name,
+              aliases: e.aliases,
+              groupId: t.format === "LEAGUE" ? null : (e.groupId ?? null),
+            };
+          },
+        );
+        await this.repository.entrantCreateMany(
+          tx,
+          added.map(
+            (
+              e: Entrant,
+            ): import("@prisma/client").Prisma.EntrantCreateManyInput => ({
+              ...e,
+              tournamentId: id,
+              nameKey: e.name.toLocaleLowerCase("en-US"),
+            }),
+          ),
+        );
+        const scopes =
+          t.format === "LEAGUE"
+            ? ["LEAGUE"]
+            : [...new Set(added.map((e: Entrant): string => e.groupId ?? ""))];
+        const fixtures = scopes.flatMap(
+          (scope: string): ReturnType<typeof additionalFixtures> =>
+            additionalFixtures(
+              [...t.entrants, ...added],
+              t.matches,
+              added.map((e: Entrant): string => e.id),
+              t.legs,
+              scope,
+            ),
+        );
+        await this.repository.matchCreateMany(tx, {
+          data: fixtures.map(
+            (
+              f: ReturnType<typeof additionalFixtures>[number],
+            ): import("@prisma/client").Prisma.MatchCreateManyInput => ({
+              ...f,
+              tournamentId: id,
+              stage: t.format === "LEAGUE" ? "LEAGUE" : "GROUP",
+            }),
+          ),
+        });
+      },
+    );
+  }
+  drawToken(
+    t: Competition,
+    input: { round: number; pairs: string[][]; byes: string[] },
+  ): string {
+    return createHmac("sha256", this.config.values.sessionSecret)
+      .update(
+        JSON.stringify([
+          "DRAW",
+          t.id,
+          t.revision,
+          input.round,
+          input.pairs,
+          input.byes,
+        ]),
+      )
+      .digest("hex");
+  }
+  async draw(
+    id: string,
+    userId: string,
+    input: DrawInput,
+  ): Promise<DrawPreview> {
+    const t = await this.owned(id, userId);
+    if (t.revision !== input.expectedRevision)
+      throw new ApplicationError(
+        "REVISION_CONFLICT",
+        409,
+        "Tournament changed. Refresh and try again.",
+      );
+    invariant(t.rounds[0]?.method !== "FIXED", "The bracket is fixed");
+    const eligible = knockoutEligibility(t);
+    invariant(
+      input.byes.length === eligible.byeCount &&
+        new Set(input.byes).size === input.byes.length &&
+        input.byes.every((id: string): boolean =>
+          eligible.entrantIds.includes(id),
+        ),
+      "Choose the required bye recipients",
+    );
+    const ids = eligible.entrantIds.filter(
+      (id: string): boolean => !input.byes.includes(id),
+    );
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    const pairs: [string, string][] = [];
+    for (let i = 0; i < ids.length; i += 2) pairs.push([ids[i], ids[i + 1]]);
+    const draw = { round: eligible.round, pairs, byes: input.byes };
+    return { ...draw, drawToken: this.drawToken(t, draw) };
+  }
+  async createRound(
+    tx: Tx,
+    t: TournamentAggregate,
+    input: PairingInput,
+  ): Promise<void> {
+    const eligible = knockoutEligibility(t);
+    validatePairings(eligible, input.pairs, input.byes);
+    const slots = input.slots ?? [
+      ...input.pairs.map((_p: string[], index: number): BracketSlot => ({
+        kind: "PAIR",
+        index,
+      })),
+      ...input.byes.map((_id: string, index: number): BracketSlot => ({
+        kind: "BYE",
+        index,
+      })),
+    ];
+    const keys = slots.map(
+      (slot: BracketSlot): string => `${slot.kind}:${slot.index}`,
+    );
+    invariant(
+      slots.length === input.pairs.length + input.byes.length &&
+        new Set(keys).size === keys.length &&
+        slots.every((slot: BracketSlot): boolean =>
+          slot.kind === "PAIR"
+            ? slot.index < input.pairs.length
+            : slot.index < input.byes.length,
+        ),
+      "Use each opening pairing and bye slot exactly once",
+    );
+    const r = await this.repository.roundCreate(tx, {
+      data: {
+        tournamentId: t.id,
+        number: eligible.round,
+        method: input.method,
+      },
+    });
+    const legs =
+      eligible.entrantIds.length === 2
+        ? (t.knockoutFinalLegs ?? 1)
+        : (t.knockoutLegs ?? 1);
+    const matches: import("@prisma/client").Prisma.MatchCreateManyInput[] = [];
+    const ties: import("@prisma/client").Prisma.KnockoutTieCreateManyInput[] =
+      [];
+    const byes: import("@prisma/client").Prisma.ByeCreateManyInput[] = [];
+    for (let slot = 0; slot < slots.length; slot++) {
+      const entry = slots[slot];
+      if (entry.kind === "BYE") {
+        byes.push({
+          tournamentId: t.id,
+          roundId: r.id,
+          entrantId: input.byes[entry.index],
+          slot,
+        });
+        continue;
+      }
+      const [homeId, awayId] = input.pairs[entry.index];
+      const tieId = randomUUID();
+      ties.push({
+        id: tieId,
+        tournamentId: t.id,
+        roundId: r.id,
+        slot,
+        homeId,
+        awayId,
+        legs,
+      });
+      for (let leg = 1; leg <= legs; leg++)
+        matches.push({
+          tournamentId: t.id,
+          knockoutRoundId: r.id,
+          knockoutTieId: tieId,
+          stage: "KNOCKOUT",
+          scope: "KNOCKOUT",
+          round: r.number,
+          leg,
+          homeId: leg === 1 ? homeId : awayId,
+          awayId: leg === 1 ? awayId : homeId,
+          pairingKey: pairingKey(homeId, awayId),
+        });
+    }
+    await this.repository.tieCreateMany(tx, ties);
+    if (byes.length) await this.repository.byeCreateMany(tx, { data: byes });
+    await this.repository.matchCreateMany(tx, { data: matches });
+  }
   async pair(
     id: string,
     userId: string,
@@ -430,52 +715,43 @@ export class TournamentsService {
       userId,
       input.expectedRevision,
       async (tx: Tx, t: TournamentAggregate): Promise<void> => {
-        const eligible = knockoutEligibility(t);
-        validatePairings(eligible, input.pairs, input.byes);
-        const r = await this.repository.roundCreate(tx, {
-          data: { tournamentId: id, number: eligible.round },
-        });
-        await this.repository.matchCreateMany(tx, {
-          data: input.pairs.map(
-            (
-              p: string[],
-            ): {
-              tournamentId: string;
-              stage: "LEAGUE" | "GROUP" | "KNOCKOUT";
-              scope: string;
-              round: number;
-              leg: number;
-              homeId: string;
-              awayId: string;
-              pairingKey: string;
-              knockoutRoundId: string;
-            } => ({
-              tournamentId: id,
-              stage: "KNOCKOUT",
-              scope: "KNOCKOUT",
-              round: r.number,
-              leg: 1,
-              homeId: p[0],
-              awayId: p[1],
-              pairingKey: pairingKey(p[0], p[1]),
-              knockoutRoundId: r.id,
-            }),
-          ),
-        });
-        if (input.byes.length)
-          await this.repository.byeCreateMany(tx, {
-            data: input.byes.map(
-              (
-                entrantId: string,
-              ): {
-                tournamentId: string;
-                roundId: string;
-                entrantId: string;
-              } => ({ tournamentId: id, roundId: r.id, entrantId }),
-            ),
-          });
+        invariant(t.rounds[0]?.method !== "FIXED", "The bracket is fixed");
+        invariant(
+          input.method !== "FIXED" || !t.rounds.length,
+          "Choose a fixed bracket before the first round",
+        );
+        if (input.method === "RANDOM")
+          invariant(
+            input.drawToken ===
+              this.drawToken(t, {
+                round: knockoutEligibility(t).round,
+                pairs: input.pairs,
+                byes: input.byes,
+              }),
+            "Review a fresh random draw before confirming",
+          );
+        await this.createRound(tx, t, input);
       },
     );
+  }
+  async advanceFixed(tx: Tx, id: string): Promise<void> {
+    const t = await this.load(id, tx);
+    if (t.rounds[0]?.method !== "FIXED") return;
+    let eligible: ReturnType<typeof knockoutEligibility>;
+    try {
+      eligible = knockoutEligibility(t);
+    } catch {
+      return;
+    }
+    const pairs: [string, string][] = [];
+    for (let i = 0; i < eligible.entrantIds.length; i += 2)
+      pairs.push([eligible.entrantIds[i], eligible.entrantIds[i + 1]]);
+    await this.createRound(tx, t, {
+      pairs,
+      byes: [],
+      method: "FIXED",
+      expectedRevision: t.revision,
+    });
   }
   async ownerMatch(matchId: string, userId: string): Promise<OwnerMatchResult> {
     const tournamentId = await this.repository.matchTournamentId(matchId);
@@ -484,9 +760,90 @@ export class TournamentsService {
     if (!m) throw new ApplicationError("NOT_FOUND", 404, "Match not found");
     return { m, t };
   }
-  impactToken(t: Competition, m: Match, score: ValidateScoreResult): string {
+  prepareResult(t: Competition, m: Match, input: ResultInput): PreparedResult {
+    const tie = (t.knockoutTies ?? []).find(
+      (x: KnockoutTie): boolean => x.id === m.knockoutTieId,
+    );
+    if (!tie || tie.legs === 1) {
+      invariant(
+        !input.knockoutDecision,
+        "Use the match tiebreak fields for single-match ties",
+      );
+      const score = validateScore(m, input);
+      return {
+        score,
+        tie: tie
+          ? {
+              ...tie,
+              winnerId: score.winnerId,
+              homeTiebreak: score.homeTiebreak,
+              awayTiebreak: score.awayTiebreak,
+            }
+          : undefined,
+      };
+    }
+    invariant(
+      input.homeTiebreak == null &&
+        input.awayTiebreak == null &&
+        input.winnerId == null,
+      "Use the aggregate decision for two-leg ties",
+    );
+    const score = validateScore(
+      { ...m, stage: "LEAGUE" },
+      { homeScore: input.homeScore, awayScore: input.awayScore },
+    );
+    const changed =
+      m.homeScore !== score.homeScore || m.awayScore !== score.awayScore;
+    invariant(
+      !input.knockoutDecision || m.leg === tie.legs,
+      "Decide the aggregate from the second leg",
+    );
+    const decision =
+      input.knockoutDecision ??
+      (changed
+        ? undefined
+        : {
+            homeTiebreak: tie.homeTiebreak,
+            awayTiebreak: tie.awayTiebreak,
+            winnerId: tie.winnerId,
+          });
+    const matches = t.matches.map((x: Match): Match =>
+      x.id === m.id ? { ...x, ...score } : x,
+    );
+    // Persist a decision only for a level aggregate; a winner from unequal scores is derived.
+    const base = aggregateOutcome(tie, matches);
+    const outcome = aggregateOutcome(
+      tie,
+      matches,
+      input.knockoutDecision ??
+        (base.complete && base.homeAggregate === base.awayAggregate
+          ? decision
+          : undefined),
+    );
+    return {
+      score,
+      tie: {
+        ...tie,
+        winnerId: outcome.winnerId,
+        homeTiebreak:
+          outcome.homeAggregate === outcome.awayAggregate
+            ? (decision?.homeTiebreak ?? null)
+            : null,
+        awayTiebreak:
+          outcome.homeAggregate === outcome.awayAggregate
+            ? (decision?.awayTiebreak ?? null)
+            : null,
+      },
+    };
+  }
+  impactToken(
+    t: Competition,
+    m: Match,
+    score: ValidateScoreResult,
+    tie?: KnockoutTie,
+  ): string {
     return createHmac("sha256", this.config.values.sessionSecret)
-      .update(JSON.stringify([t.id, t.revision, m.id, m.revision, score]))
+      .update(JSON.stringify([t.id, t.revision, m.id, m.revision, score, tie]))
       .digest("hex");
   }
   async previewResult(
@@ -504,10 +861,10 @@ export class TournamentsService {
         409,
         "Match or tournament changed; refresh",
       );
-    const score = validateScore(m, input);
+    const { score, tie } = this.prepareResult(t, m, input);
     return {
-      ...correctionImpact(t, m, score),
-      impactToken: this.impactToken(t, m, score),
+      ...correctionImpact(t, m, score, tie),
+      impactToken: this.impactToken(t, m, score, tie),
       tournamentRevision: t.revision,
     };
   }
@@ -532,12 +889,12 @@ export class TournamentsService {
             "Match changed; refresh",
           );
         invariant(t.status !== "DRAFT", "Start the tournament first");
-        const score = validateScore(current, input),
-          impact = correctionImpact(t, current, score);
+        const { score, tie } = this.prepareResult(t, current, input),
+          impact = correctionImpact(t, current, score, tie);
         if (
           impact.requiresReset &&
           (!input.confirmReset ||
-            input.impactToken !== this.impactToken(t, current, score))
+            input.impactToken !== this.impactToken(t, current, score, tie))
         )
           throw new ApplicationError(
             "RESET_CONFIRMATION_REQUIRED",
@@ -551,6 +908,9 @@ export class TournamentsService {
             ),
             matches: t.matches.filter((x: Match): boolean =>
               impact.matchIds.includes(x.id),
+            ),
+            knockoutTies: (t.knockoutTies ?? []).filter(
+              (x: KnockoutTie): boolean => impact.roundIds.includes(x.roundId),
             ),
             qualification: impact.resetQualification ? t.qualification : null,
           };
@@ -583,14 +943,27 @@ export class TournamentsService {
             matchId,
             actorId: userId,
             action: score.homeScore === null ? "CLEAR" : "SCORE",
-            before: current,
-            after: score,
+            before: {
+              ...current,
+              knockoutTie:
+                (t.knockoutTies ?? []).find(
+                  (x: KnockoutTie): boolean => x.id === current.knockoutTieId,
+                ) ?? null,
+            },
+            after: { ...score, knockoutTie: tie ?? null },
           },
         });
         await this.repository.matchUpdate(tx, {
           where: { id: matchId },
           data: { ...score, revision: { increment: 1 } },
         });
+        if (tie)
+          await this.repository.tieUpdate(tx, tie.id, {
+            winnerId: tie.winnerId,
+            homeTiebreak: tie.homeTiebreak,
+            awayTiebreak: tie.awayTiebreak,
+          });
+        await this.advanceFixed(tx, t.id);
         if (
           current.homeScore !== score.homeScore ||
           current.awayScore !== score.awayScore

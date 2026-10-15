@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
+  ValidateNested,
   IsInt,
   IsOptional,
   IsUUID,
@@ -9,8 +10,33 @@ import {
   Min,
   ValidateIf,
 } from "class-validator";
+import { Type } from "class-transformer";
 import { RevisionInput } from "../tournaments/tournament-request.dto";
+export class KnockoutDecision {
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(2147483647)
+  homeTiebreak?: number | null;
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(2147483647)
+  awayTiebreak?: number | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsUUID()
+  winnerId?: string | null;
+}
 export class ResultInput extends RevisionInput {
+  @ApiPropertyOptional({ type: KnockoutDecision })
+  @IsOptional()
+  @ValidateNested()
+  @Type((): typeof KnockoutDecision => KnockoutDecision)
+  knockoutDecision?: KnockoutDecision;
+
   @ApiProperty({})
   @IsInt()
   @Min(0)

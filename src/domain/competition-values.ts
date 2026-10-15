@@ -1,5 +1,5 @@
 export const games = ["EFOOTBALL", "CODM"] as const;
-export const formats = ["LEAGUE", "WORLD_CUP"] as const;
+export const formats = ["LEAGUE", "WORLD_CUP", "KNOCKOUT"] as const;
 export const statuses = ["DRAFT", "ACTIVE", "COMPLETED"] as const;
 export const matchStages = ["LEAGUE", "GROUP", "KNOCKOUT"] as const;
 export const competitionStages = ["SETUP", ...matchStages] as const;

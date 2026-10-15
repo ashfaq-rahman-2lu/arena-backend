@@ -13,3 +13,30 @@ test("audit views allow only declared competition fields, including nested reset
     { homeScore: 0, awayScore: null, matches: [{ id: "match", homeScore: 1 }] },
   );
 });
+test("audit preserves aggregate tie outcomes while filtering private metadata", (): void => {
+  assert.deepEqual(
+    auditPayload({
+      knockoutTie: {
+        id: "tie",
+        legs: 2,
+        winnerId: "team",
+        homeTiebreak: 4,
+        awayTiebreak: 3,
+        tournamentId: "private",
+      },
+      knockoutTies: [
+        { id: "tie", slot: 0, roundId: "round", ownerId: "private" },
+      ],
+    }),
+    {
+      knockoutTie: {
+        id: "tie",
+        legs: 2,
+        winnerId: "team",
+        homeTiebreak: 4,
+        awayTiebreak: 3,
+      },
+      knockoutTies: [{ id: "tie", slot: 0, roundId: "round" }],
+    },
+  );
+});

@@ -24,6 +24,7 @@ export class Group {
   @ApiProperty({ type: Number }) qualifierCount!: number;
 }
 export class Match {
+  @ApiProperty({ type: String, nullable: true }) knockoutTieId?: string | null;
   @ApiProperty({ type: String }) id!: string;
   @ApiProperty({ type: String, enum: matchStages }) stage!: MatchStage;
   @ApiProperty({ type: String }) scope!: string;
@@ -39,9 +40,12 @@ export class Match {
   @ApiProperty({ type: Number }) revision!: number;
 }
 export class ByeView {
+  @ApiProperty({ type: Number }) slot?: number;
   @ApiProperty({ type: String }) entrantId!: string;
 }
 export class Round {
+  @ApiProperty({ enum: ["MANUAL", "RANDOM", "FIXED"] }) method?:
+    "MANUAL" | "RANDOM" | "FIXED";
   @ApiProperty({ type: String }) id!: string;
   @ApiProperty({ type: Number }) number!: number;
   @ApiProperty({ type: [ByeView] }) byes!: ByeView[];
@@ -87,6 +91,40 @@ export class ScopeStanding {
   @ApiProperty({ type: String }) scope!: string;
   @ApiProperty({ type: [Standing] }) rows!: Standing[];
 }
+export class KnockoutTieView {
+  @ApiProperty({ type: String }) id!: string;
+  @ApiProperty({ type: String }) roundId!: string;
+  @ApiProperty({ type: Number }) slot!: number;
+  @ApiProperty({ type: String }) homeId!: string;
+  @ApiProperty({ type: String }) awayId!: string;
+  @ApiProperty({ type: Number }) legs!: number;
+  @ApiProperty({ type: Number, nullable: true }) homeTiebreak!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) awayTiebreak!: number | null;
+  @ApiProperty({ type: String, nullable: true }) winnerId!: string | null;
+  @ApiProperty({ type: Number }) homeAggregate!: number;
+  @ApiProperty({ type: Number }) awayAggregate!: number;
+}
+export class ImportEntrant {
+  @ApiProperty({ type: String }) id!: string;
+  @ApiProperty({ type: String }) name!: string;
+  @ApiProperty({ type: [String] }) aliases!: string[];
+}
+export class EntrantPage {
+  @ApiProperty({ type: [ImportEntrant] }) items!: ImportEntrant[];
+  @ApiProperty({ type: Number }) total!: number;
+  @ApiProperty({ type: Number }) page!: number;
+  @ApiProperty({ type: Number }) limit!: number;
+}
+export class DrawPreview {
+  @ApiProperty({ type: Number }) round!: number;
+  @ApiProperty({
+    type: "array",
+    items: { type: "array", items: { type: "string" } },
+  })
+  pairs!: string[][];
+  @ApiProperty({ type: [String] }) byes!: string[];
+  @ApiProperty({ type: String }) drawToken!: string;
+}
 @ApiExtraModels(Qualification, QualificationPreview, Eligibility)
 export class TournamentView {
   @ApiProperty({ type: String }) id!: string;
@@ -98,6 +136,9 @@ export class TournamentView {
   @ApiProperty({ type: String, enum: competitionStages })
   currentStage!: CompetitionStage;
   @ApiProperty({ type: Number }) revision!: number;
+  @ApiProperty({ type: Number }) knockoutLegs!: number;
+  @ApiProperty({ type: Number }) knockoutFinalLegs!: number;
+  @ApiProperty({ type: [KnockoutTieView] }) knockoutTies!: KnockoutTieView[];
   @ApiProperty({ type: Number }) legs!: number;
   @ApiProperty({ type: Number }) winPoints!: number;
   @ApiProperty({ type: Number }) drawPoints!: number;

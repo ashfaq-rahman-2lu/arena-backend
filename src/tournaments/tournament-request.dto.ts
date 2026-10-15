@@ -67,9 +67,15 @@ export class TournamentSetup {
   @ApiProperty({ enum: ["EFOOTBALL", "CODM"] })
   @IsIn(["EFOOTBALL", "CODM"])
   game!: "EFOOTBALL" | "CODM";
-  @ApiProperty({ enum: ["LEAGUE", "WORLD_CUP"] })
-  @IsIn(["LEAGUE", "WORLD_CUP"])
-  format!: "LEAGUE" | "WORLD_CUP";
+  @ApiProperty({ enum: ["LEAGUE", "WORLD_CUP", "KNOCKOUT"] })
+  @IsIn(["LEAGUE", "WORLD_CUP", "KNOCKOUT"])
+  format!: "LEAGUE" | "WORLD_CUP" | "KNOCKOUT";
+  @ApiPropertyOptional({ enum: [1, 2], default: 1 })
+  @IsIn([1, 2])
+  knockoutLegs: 1 | 2 = 1;
+  @ApiPropertyOptional({ enum: [1, 2], default: 1 })
+  @IsIn([1, 2])
+  knockoutFinalLegs: 1 | 2 = 1;
   @ApiProperty({ enum: [1, 2] }) @IsIn([1, 2]) legs!: 1 | 2;
   @ApiProperty({}) @IsInt() @Min(0) @Max(1000) winPoints!: number;
   @ApiProperty({}) @IsInt() @Min(0) @Max(1000) drawPoints!: number;
@@ -149,6 +155,24 @@ export class PairListValidator implements ValidatorConstraintInterface {
   }
 }
 export class PairingInput extends RevisionInput {
+  @ApiPropertyOptional({
+    enum: ["MANUAL", "RANDOM", "FIXED"],
+    default: "MANUAL",
+  })
+  @IsIn(["MANUAL", "RANDOM", "FIXED"])
+  method: "MANUAL" | "RANDOM" | "FIXED" = "MANUAL";
+  @ApiPropertyOptional({})
+  @IsOptional()
+  @Matches(/^[a-f0-9]{64}$/)
+  drawToken?: string;
+  @ApiPropertyOptional({ type: (): [typeof BracketSlot] => [BracketSlot] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(128)
+  @ValidateNested({ each: true })
+  @Type((): typeof BracketSlot => BracketSlot)
+  slots?: BracketSlot[];
+
   @ApiProperty({
     type: "array",
     maxItems: 128,
@@ -166,4 +190,57 @@ export class PairingInput extends RevisionInput {
   @ArrayMaxSize(256)
   @IsUUID(undefined, { each: true })
   byes!: string[];
+}
+
+export class TournamentNameUpdate extends RevisionInput {
+  @ApiProperty({})
+  @Transform(({ value }: TransformFnParams): unknown =>
+    typeof value === "string" ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name!: string;
+}
+export class NewEntrant {
+  @ApiProperty({})
+  @Transform(({ value }: TransformFnParams): unknown =>
+    typeof value === "string" ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  name!: string;
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(80, { each: true })
+  aliases: string[] = [];
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsUUID()
+  groupId?: string | null;
+}
+export class EntrantsAddition extends RevisionInput {
+  @ApiProperty({ type: [NewEntrant] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(254)
+  @ValidateNested({ each: true })
+  @Type((): typeof NewEntrant => NewEntrant)
+  entrants!: NewEntrant[];
+}
+export class DrawInput extends RevisionInput {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(256)
+  @IsUUID(undefined, { each: true })
+  byes!: string[];
+}
+export class BracketSlot {
+  @ApiProperty({ enum: ["PAIR", "BYE"] }) @IsIn(["PAIR", "BYE"]) kind!:
+    "PAIR" | "BYE";
+  @ApiProperty({}) @IsInt() @Min(0) @Max(255) index!: number;
 }

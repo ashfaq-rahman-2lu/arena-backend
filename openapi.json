@@ -1680,6 +1680,527 @@
         ]
       }
     },
+    "/api/v1/tournaments/{id}/name": {
+      "patch": {
+        "operationId": "TournamentsController_renameTournament",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TournamentNameUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
+    "/api/v1/tournaments/{id}/entrants": {
+      "get": {
+        "operationId": "TournamentsController_entrants",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntrantPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      },
+      "post": {
+        "operationId": "TournamentsController_addEntrants",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntrantsAddition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
+    "/api/v1/tournaments/{id}/rounds/draw-preview": {
+      "post": {
+        "operationId": "TournamentsController_draw",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
     "/api/v1/tournaments/{id}/fixture-preview": {
       "get": {
         "operationId": "TournamentsController_preview",
@@ -3460,7 +3981,8 @@
             "type": "string",
             "enum": [
               "LEAGUE",
-              "WORLD_CUP"
+              "WORLD_CUP",
+              "KNOCKOUT"
             ]
           },
           "status": {
@@ -3627,8 +4149,25 @@
             "type": "string",
             "enum": [
               "LEAGUE",
-              "WORLD_CUP"
+              "WORLD_CUP",
+              "KNOCKOUT"
             ]
+          },
+          "knockoutLegs": {
+            "type": "number",
+            "enum": [
+              1,
+              2
+            ],
+            "default": 1
+          },
+          "knockoutFinalLegs": {
+            "type": "number",
+            "enum": [
+              1,
+              2
+            ],
+            "default": 1
           },
           "legs": {
             "type": "number",
@@ -3753,6 +4292,60 @@
           "byeCount"
         ]
       },
+      "KnockoutTieView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "roundId": {
+            "type": "string"
+          },
+          "slot": {
+            "type": "number"
+          },
+          "homeId": {
+            "type": "string"
+          },
+          "awayId": {
+            "type": "string"
+          },
+          "legs": {
+            "type": "number"
+          },
+          "homeTiebreak": {
+            "type": "number",
+            "nullable": true
+          },
+          "awayTiebreak": {
+            "type": "number",
+            "nullable": true
+          },
+          "winnerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "homeAggregate": {
+            "type": "number"
+          },
+          "awayAggregate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "roundId",
+          "slot",
+          "homeId",
+          "awayId",
+          "legs",
+          "homeTiebreak",
+          "awayTiebreak",
+          "winnerId",
+          "homeAggregate",
+          "awayAggregate"
+        ]
+      },
       "Group": {
         "type": "object",
         "properties": {
@@ -3775,6 +4368,10 @@
       "Match": {
         "type": "object",
         "properties": {
+          "knockoutTieId": {
+            "type": "string",
+            "nullable": true
+          },
           "id": {
             "type": "string"
           },
@@ -3826,6 +4423,7 @@
           }
         },
         "required": [
+          "knockoutTieId",
           "id",
           "stage",
           "scope",
@@ -3844,17 +4442,29 @@
       "ByeView": {
         "type": "object",
         "properties": {
+          "slot": {
+            "type": "number"
+          },
           "entrantId": {
             "type": "string"
           }
         },
         "required": [
+          "slot",
           "entrantId"
         ]
       },
       "Round": {
         "type": "object",
         "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "RANDOM",
+              "FIXED"
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -3869,6 +4479,7 @@
           }
         },
         "required": [
+          "method",
           "id",
           "number",
           "byes"
@@ -3997,7 +4608,8 @@
             "type": "string",
             "enum": [
               "LEAGUE",
-              "WORLD_CUP"
+              "WORLD_CUP",
+              "KNOCKOUT"
             ]
           },
           "status": {
@@ -4019,6 +4631,18 @@
           },
           "revision": {
             "type": "number"
+          },
+          "knockoutLegs": {
+            "type": "number"
+          },
+          "knockoutFinalLegs": {
+            "type": "number"
+          },
+          "knockoutTies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnockoutTieView"
+            }
           },
           "legs": {
             "type": "number"
@@ -4124,6 +4748,9 @@
           "status",
           "currentStage",
           "revision",
+          "knockoutLegs",
+          "knockoutFinalLegs",
+          "knockoutTies",
           "legs",
           "winPoints",
           "drawPoints",
@@ -4157,8 +4784,25 @@
             "type": "string",
             "enum": [
               "LEAGUE",
-              "WORLD_CUP"
+              "WORLD_CUP",
+              "KNOCKOUT"
             ]
+          },
+          "knockoutLegs": {
+            "type": "number",
+            "enum": [
+              1,
+              2
+            ],
+            "default": 1
+          },
+          "knockoutFinalLegs": {
+            "type": "number",
+            "enum": [
+              1,
+              2
+            ],
+            "default": 1
           },
           "legs": {
             "type": "number",
@@ -4206,6 +4850,159 @@
           "entrants",
           "groups",
           "expectedRevision"
+        ]
+      },
+      "TournamentNameUpdate": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "name"
+        ]
+      },
+      "ImportEntrant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "aliases"
+        ]
+      },
+      "EntrantPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportEntrant"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "NewEntrant": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groupId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "name",
+          "aliases"
+        ]
+      },
+      "EntrantsAddition": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number"
+          },
+          "entrants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewEntrant"
+            }
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "entrants"
+        ]
+      },
+      "DrawInput": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number"
+          },
+          "byes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "byes"
+        ]
+      },
+      "DrawPreview": {
+        "type": "object",
+        "properties": {
+          "round": {
+            "type": "number"
+          },
+          "pairs": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "byes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "drawToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "round",
+          "pairs",
+          "byes",
+          "drawToken"
         ]
       },
       "Fixture": {
@@ -4324,11 +5121,48 @@
           "order"
         ]
       },
+      "BracketSlot": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PAIR",
+              "BYE"
+            ]
+          },
+          "index": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "index"
+        ]
+      },
       "PairingInput": {
         "type": "object",
         "properties": {
           "expectedRevision": {
             "type": "number"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "RANDOM",
+              "FIXED"
+            ],
+            "default": "MANUAL"
+          },
+          "drawToken": {
+            "type": "string"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BracketSlot"
+            }
           },
           "pairs": {
             "type": "array",
@@ -4424,11 +5258,31 @@
           "limit"
         ]
       },
+      "KnockoutDecision": {
+        "type": "object",
+        "properties": {
+          "homeTiebreak": {
+            "type": "number",
+            "nullable": true
+          },
+          "awayTiebreak": {
+            "type": "number",
+            "nullable": true
+          },
+          "winnerId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "ResultInput": {
         "type": "object",
         "properties": {
           "expectedRevision": {
             "type": "number"
+          },
+          "knockoutDecision": {
+            "$ref": "#/components/schemas/KnockoutDecision"
           },
           "expectedTournamentRevision": {
             "type": "number"

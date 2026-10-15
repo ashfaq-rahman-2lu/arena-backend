@@ -74,3 +74,43 @@ test("inconsistent existing membership aborts the migration without altering or 
       "0",
     );
   }));
+
+test("knockout migration preserves scored legacy matches and backfills one-leg ties", async (): Promise<void> =>
+  temporaryDatabase(async (url: string): Promise<void> => {
+    previousMigrations(url);
+    sql(url, validFixture);
+    sql(url, readFileSync(membership, "utf8"));
+    sql(
+      url,
+      `INSERT INTO "Entrant" (id,"tournamentId",name,"nameKey",aliases) VALUES ('entrant-c','a','Gamma','gamma',ARRAY[]::text[]);
+ INSERT INTO "Match" (id,"tournamentId",stage,scope,round,leg,"homeId","awayId","pairingKey","knockoutRoundId","homeScore","awayScore","winnerId",revision) VALUES ('legacy-match','a','KNOCKOUT','KNOCKOUT',1,1,'entrant-a','entrant-c','entrant-a:entrant-c','round-a',3,1,'entrant-a',7);`,
+    );
+    sql(
+      url,
+      readFileSync(
+        "prisma/migrations/20261015000000_knockout_formats/migration.sql",
+        "utf8",
+      ),
+    );
+    assert.equal(
+      sql(
+        url,
+        `SELECT "homeScore" || ':' || "awayScore" || ':' || revision FROM "Match" WHERE id='legacy-match';`,
+      ),
+      "3:1:7",
+    );
+    assert.equal(
+      sql(
+        url,
+        `SELECT legs || ':' || "winnerId" FROM "KnockoutTie" WHERE id='legacy-legacy-match';`,
+      ),
+      "1:entrant-a",
+    );
+    assert.equal(
+      sql(
+        url,
+        `SELECT "knockoutLegs" || ':' || "knockoutFinalLegs" FROM "Tournament" WHERE id='a';`,
+      ),
+      "1:1",
+    );
+  }));

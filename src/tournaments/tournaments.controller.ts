@@ -20,6 +20,9 @@ import { actor, AuthedRequest } from "../auth/http-session";
 import { PageQuery, TournamentListQuery } from "../common/pagination.dto";
 import {
   EntrantUpdate,
+  EntrantsAddition,
+  TournamentNameUpdate,
+  DrawInput,
   PairingInput,
   RevisionInput,
   TieInput,
@@ -27,6 +30,8 @@ import {
   TournamentUpdate,
 } from "./tournament-request.dto";
 import {
+  DrawPreview,
+  EntrantPage,
   FixturePage,
   HistoryPage,
   TournamentPage,
@@ -80,6 +85,42 @@ export class TournamentsController {
     body: TournamentUpdate,
   ): Promise<TournamentView> {
     return this.tournaments.update(id, actor(req), body);
+  }
+  @Patch(":id/name")
+  @ApiOkResponse({ type: TournamentView })
+  renameTournament(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: TournamentNameUpdate,
+  ): Promise<TournamentView> {
+    return this.tournaments.renameTournament(id, actor(req), body);
+  }
+  @Get(":id/entrants")
+  @ApiOkResponse({ type: EntrantPage })
+  entrants(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Query() query: PageQuery,
+  ): Promise<EntrantPage> {
+    return this.tournaments.entrants(id, actor(req), query);
+  }
+  @Post(":id/entrants")
+  @ApiCreatedResponse({ type: TournamentView })
+  addEntrants(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: EntrantsAddition,
+  ): Promise<TournamentView> {
+    return this.tournaments.addEntrants(id, actor(req), body);
+  }
+  @Post(":id/rounds/draw-preview")
+  @ApiCreatedResponse({ type: DrawPreview })
+  draw(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: DrawInput,
+  ): Promise<DrawPreview> {
+    return this.tournaments.draw(id, actor(req), body);
   }
   @Get(":id/fixture-preview")
   @ApiOkResponse({ type: FixturePage })

@@ -1074,3 +1074,382 @@ test("configured auth rate limit applies per process and returns a safe code", a
     await limited.close();
   }
 });
+
+test("rename works after start and only the owner can rename", async (): Promise<void> => {
+  const t = await start(await create());
+  await send(
+    other,
+    "patch",
+    `/tournaments/${t.id}/name`,
+    { name: "Renamed", expectedRevision: t.revision },
+    otherCsrf,
+  ).expect(403);
+  const updated = readResponse<TournamentView>(
+    await send(admin, "patch", `/tournaments/${t.id}/name`, {
+      name: "Renamed",
+      expectedRevision: t.revision,
+    }).expect(200),
+    "TournamentView",
+  );
+  assert.equal(updated.name, "Renamed");
+  assert.deepEqual(updated.matches, t.matches);
+  await send(admin, "patch", `/tournaments/${t.id}/name`, {
+    name: "Stale",
+    expectedRevision: t.revision,
+  }).expect(409);
+});
+test("batch addition preserves league fixtures and generates all new pairs atomically", async (): Promise<void> => {
+  const t = await start(await create());
+  const updated = readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/entrants`, {
+      expectedRevision: t.revision,
+      entrants: [
+        { name: "Echo", aliases: [] },
+        { name: "Foxtrot", aliases: [] },
+      ],
+    }).expect(201),
+    "TournamentView",
+  );
+  assert.equal(updated.entrants.length, 6);
+  assert.equal(updated.matches.length, 15);
+  assert.deepEqual(
+    updated.matches.filter((m: Match): boolean =>
+      t.matches.some((old: Match): boolean => old.id === m.id),
+    ),
+    t.matches,
+  );
+  await send(admin, "post", `/tournaments/${t.id}/entrants`, {
+    expectedRevision: updated.revision,
+    entrants: [
+      { name: "ECHO", aliases: [] },
+      { name: "Golf", aliases: [] },
+    ],
+  }).expect(400);
+  const latest = readResponse<TournamentView>(
+    await admin.get(`${base}/tournaments/${t.id}`).expect(200),
+    "TournamentView",
+  );
+  assert.equal(latest.entrants.length, 6);
+});
+test("only knockout starts without matches and participant additions are locked", async (): Promise<void> => {
+  const t = await start(
+    await create(admin, { ...initial, format: "KNOCKOUT" }),
+  );
+  assert.equal(t.currentStage, "KNOCKOUT");
+  assert.equal(t.matches.length, 0);
+  assert.equal(t.qualification, null);
+  assert.equal(t.knockoutEligibility?.entrantIds.length, 4);
+  await send(admin, "post", `/tournaments/${t.id}/entrants`, {
+    expectedRevision: t.revision,
+    entrants: [{ name: "Echo", aliases: [] }],
+  }).expect(400);
+});
+test("owner import candidates are paginated and inaccessible to other owners", async (): Promise<void> => {
+  const t = await create();
+  const response = await admin
+    .get(`${base}/tournaments/${t.id}/entrants?page=2&limit=2`)
+    .expect(200);
+  const page = response.body as { items: Entrant[]; total: number };
+  assert.equal(page.items.length, 2);
+  assert.equal(page.total, 4);
+  await other.get(`${base}/tournaments/${t.id}/entrants`).expect(403);
+});
+
+async function pairCup(
+  t: TournamentView,
+  extra: object = {},
+): Promise<TournamentView> {
+  const ids = required(t.knockoutEligibility).entrantIds;
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < ids.length; i += 2) pairs.push([ids[i], ids[i + 1]]);
+  return readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/rounds`, {
+      expectedRevision: t.revision,
+      pairs,
+      byes: [],
+      ...extra,
+    }).expect(201),
+    "TournamentView",
+  );
+}
+test("random draws are reviewed, reject tampering and stale revisions", async (): Promise<void> => {
+  let t = await start(await create(admin, { ...initial, format: "KNOCKOUT" }));
+  const draw = readResponse<
+    import("../../src/tournaments/tournament-response.dto").DrawPreview
+  >(
+    await send(admin, "post", `/tournaments/${t.id}/rounds/draw-preview`, {
+      expectedRevision: t.revision,
+      byes: [],
+    }).expect(201),
+    "DrawPreview",
+  );
+  await send(admin, "post", `/tournaments/${t.id}/rounds`, {
+    expectedRevision: t.revision,
+    method: "RANDOM",
+    pairs: [draw.pairs[1], draw.pairs[0]],
+    byes: [],
+    drawToken: draw.drawToken,
+  }).expect(400);
+  t = readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/rounds`, {
+      expectedRevision: t.revision,
+      method: "RANDOM",
+      pairs: draw.pairs,
+      byes: [],
+      drawToken: draw.drawToken,
+    }).expect(201),
+    "TournamentView",
+  );
+  assert.equal(t.rounds[0].method, "RANDOM");
+});
+test("fixed bracket advances only after all ties resolve and preserves slot ordering", async (): Promise<void> => {
+  let t = await pairCup(
+    await start(await create(admin, { ...initial, format: "KNOCKOUT" })),
+    { method: "FIXED" },
+  );
+  const first = required(
+      t.matches.find(
+        (m: Match): boolean => m.knockoutTieId === t.knockoutTies[0].id,
+      ),
+    ),
+    second = required(
+      t.matches.find(
+        (m: Match): boolean => m.knockoutTieId === t.knockoutTies[1].id,
+      ),
+    );
+  t = readResponse<TournamentView>(
+    await score(t, first, 2, 0).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.rounds.length, 1);
+  t = readResponse<TournamentView>(
+    await score(t, second, 1, 0).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.rounds.length, 2);
+  assert.equal(t.knockoutTies.length, 3);
+  const final = required(t.matches.find((m: Match): boolean => m.round === 2));
+  assert.deepEqual([final.homeId, final.awayId], [first.homeId, second.homeId]);
+  await send(admin, "post", `/tournaments/${t.id}/rounds`, {
+    expectedRevision: t.revision,
+    pairs: [],
+    byes: [],
+  }).expect(400);
+  const old = required(
+    t.matches.find((m: Match): boolean => m.id === first.id),
+  );
+  const correction = {
+    homeScore: 0,
+    awayScore: 2,
+    expectedRevision: old.revision,
+    expectedTournamentRevision: t.revision,
+  };
+  const impact = readResponse<CorrectionImpact>(
+    await send(
+      admin,
+      "post",
+      `/matches/${old.id}/correction-preview`,
+      correction,
+    ).expect(201),
+    "CorrectionImpact",
+  );
+  assert.equal(impact.requiresReset, true);
+  t = readResponse<TournamentView>(
+    await send(admin, "patch", `/matches/${old.id}/result`, {
+      ...correction,
+      confirmReset: true,
+      impactToken: impact.impactToken,
+    }).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.rounds.length, 2);
+  assert.equal(
+    required(t.matches.find((m: Match): boolean => m.round === 2)).homeId,
+    first.awayId,
+  );
+});
+test("two-leg final aggregates identities, allows first-leg draws, and resolves a tied aggregate", async (): Promise<void> => {
+  let t = await pairCup(
+    await start(
+      await create(admin, {
+        ...initial,
+        format: "KNOCKOUT",
+        knockoutLegs: 2,
+        knockoutFinalLegs: 2,
+        entrants: initial.entrants.slice(0, 2),
+      }),
+    ),
+  );
+  assert.equal(t.matches.length, 2);
+  const leg1 = required(t.matches.find((m: Match): boolean => m.leg === 1));
+  const leg2 = required(t.matches.find((m: Match): boolean => m.leg === 2));
+  t = readResponse<TournamentView>(
+    await score(t, leg1, 2, 0).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.status, "ACTIVE");
+  t = readResponse<TournamentView>(
+    await score(t, leg2, 2, 0, {
+      knockoutDecision: { winnerId: leg1.homeId },
+    }).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.status, "COMPLETED");
+  assert.equal(t.championId, leg1.homeId);
+  assert.equal(t.knockoutTies[0].homeAggregate, 2);
+  assert.equal(t.knockoutTies[0].awayAggregate, 2);
+  const current = required(
+    t.matches.find((m: Match): boolean => m.id === leg1.id),
+  );
+  t = readResponse<TournamentView>(
+    await score(t, current, null, null).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.status, "ACTIVE");
+  assert.equal(t.championId, null);
+  assert.equal(t.knockoutTies[0].winnerId, null);
+});
+test("completed league reopens after additions and retains all scored fixtures", async (): Promise<void> => {
+  let t = await start(
+    await create(admin, { ...initial, entrants: initial.entrants.slice(0, 2) }),
+  );
+  t = readResponse<TournamentView>(
+    await score(t, t.matches[0], 2, 0).expect(200),
+    "TournamentView",
+  );
+  assert.equal(t.status, "COMPLETED");
+  const old = t.matches[0];
+  t = readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/entrants`, {
+      expectedRevision: t.revision,
+      entrants: [{ name: "New", aliases: [] }],
+    }).expect(201),
+    "TournamentView",
+  );
+  assert.equal(t.status, "ACTIVE");
+  assert.equal(t.championId, null);
+  assert.deepEqual(
+    t.matches.find((m: Match): boolean => m.id === old.id),
+    old,
+  );
+});
+test("simultaneous additions serialize and stale requests do not insert teams", async (): Promise<void> => {
+  const t = await start(await create());
+  const results = await Promise.all(
+    ["New 1", "New 2"].map((name: string): Promise<RequestResponse> =>
+      send(admin, "post", `/tournaments/${t.id}/entrants`, {
+        expectedRevision: t.revision,
+        entrants: [{ name, aliases: [] }],
+      }),
+    ),
+  );
+  assert.deepEqual(
+    results.map((r: RequestResponse): number => r.status).sort(),
+    [201, 409],
+  );
+});
+
+test("group additions stay in their assigned scope and stop at qualification confirmation", async (): Promise<void> => {
+  let t = await start(
+    await create(admin, {
+      ...initial,
+      format: "WORLD_CUP",
+      groups: [
+        { name: "A", qualifierCount: 1 },
+        { name: "B", qualifierCount: 1 },
+      ],
+      entrants: initial.entrants.map(
+        (e: (typeof initial.entrants)[number], i: number): object => ({
+          ...e,
+          groupIndex: i < 2 ? 0 : 1,
+        }),
+      ),
+    }),
+  );
+  const old = structuredClone(t.matches),
+    group = t.groups[0];
+  t = readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/entrants`, {
+      expectedRevision: t.revision,
+      entrants: [
+        { name: "Echo", aliases: [], groupId: group.id },
+        { name: "Foxtrot", aliases: [], groupId: group.id },
+      ],
+    }).expect(201),
+    "TournamentView",
+  );
+  assert.equal(t.matches.length, 7);
+  assert.deepEqual(
+    t.matches.filter((m: Match): boolean =>
+      old.some((x: Match): boolean => x.id === m.id),
+    ),
+    old,
+  );
+  for (const original of t.matches) {
+    const m = required(
+      t.matches.find((x: Match): boolean => x.id === original.id),
+    );
+    const h = t.entrants.findIndex((e: Entrant): boolean => e.id === m.homeId),
+      a = t.entrants.findIndex((e: Entrant): boolean => e.id === m.awayId);
+    t = readResponse<TournamentView>(
+      await score(t, m, h < a ? 2 : 0, h < a ? 0 : 2).expect(200),
+      "TournamentView",
+    );
+  }
+  assert.ok(t.qualificationPreview);
+  t = readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/qualification`, {
+      expectedRevision: t.revision,
+    }).expect(201),
+    "TournamentView",
+  );
+  await send(admin, "post", `/tournaments/${t.id}/entrants`, {
+    expectedRevision: t.revision,
+    entrants: [{ name: "Late", aliases: [], groupId: group.id }],
+  }).expect(400);
+});
+test("qualification and participant additions serialize without partial stage changes", async (): Promise<void> => {
+  let t = await start(
+    await create(admin, {
+      ...initial,
+      format: "WORLD_CUP",
+      groups: [
+        { name: "A", qualifierCount: 1 },
+        { name: "B", qualifierCount: 1 },
+      ],
+      entrants: initial.entrants.map(
+        (e: (typeof initial.entrants)[number], i: number): object => ({
+          ...e,
+          groupIndex: i < 2 ? 0 : 1,
+        }),
+      ),
+    }),
+  );
+  for (const m of t.matches)
+    t = readResponse<TournamentView>(
+      await score(t, m, 2, 0).expect(200),
+      "TournamentView",
+    );
+  const results = await Promise.all([
+    send(admin, "post", `/tournaments/${t.id}/qualification`, {
+      expectedRevision: t.revision,
+    }),
+    send(admin, "post", `/tournaments/${t.id}/entrants`, {
+      expectedRevision: t.revision,
+      entrants: [{ name: "Late team", aliases: [], groupId: t.groups[0].id }],
+    }),
+  ]);
+  assert.deepEqual(
+    results.map((r: RequestResponse): number => r.status).sort(),
+    [201, 409],
+  );
+  const latest = readResponse<TournamentView>(
+    await admin.get(`${base}/tournaments/${t.id}`).expect(200),
+    "TournamentView",
+  );
+  assert.ok(
+    latest.qualification
+      ? latest.entrants.length === 4
+      : latest.entrants.length === 5,
+  );
+});

@@ -1,3 +1,12 @@
+import { invariant, completed, roundRobin } from "./competition-fixtures";
+export {
+  RuleError,
+  invariant,
+  completed,
+  pairingKey,
+  roundRobin,
+} from "./competition-fixtures";
+import { aggregateOutcome } from "./knockout-rules";
 export type ScheduledFixture = {
   homeId: string;
   awayId: string;
@@ -75,6 +84,12 @@ export type TournamentViewResult = {
   status: CompetitionStatus;
   currentStage: CompetitionStage;
   revision: number;
+  knockoutLegs: number;
+  knockoutFinalLegs: number;
+  knockoutTies: (KnockoutTie & {
+    homeAggregate: number;
+    awayAggregate: number;
+  })[];
   legs: number;
   winPoints: number;
   drawPoints: number;
@@ -100,7 +115,19 @@ export type Group = {
   name: string;
   qualifierCount: number;
 };
+export type KnockoutTie = {
+  id: string;
+  roundId: string;
+  slot: number;
+  homeId: string;
+  awayId: string;
+  legs: number;
+  homeTiebreak: number | null;
+  awayTiebreak: number | null;
+  winnerId: string | null;
+};
 export type Match = {
+  knockoutTieId?: string | null;
   id: string;
   stage: MatchStage;
   scope: string;
@@ -118,7 +145,8 @@ export type Match = {
 export type Round = {
   id: string;
   number: number;
-  byes: Bye[];
+  method?: "MANUAL" | "RANDOM" | "FIXED";
+  byes: (Bye & { slot?: number })[];
 };
 export type Tie = {
   scope: string;
@@ -134,6 +162,9 @@ export type Competition = {
   status: CompetitionStatus;
   currentStage: CompetitionStage;
   revision: number;
+  knockoutLegs?: number;
+  knockoutFinalLegs?: number;
+  knockoutTies?: KnockoutTie[];
   legs: number;
   winPoints: number;
   drawPoints: number;
@@ -161,70 +192,14 @@ export type Standing = {
   tieSignature: string | null;
   tieResolved: boolean;
 };
-export class RuleError extends Error {}
-export function invariant(
-  condition: unknown,
-  message: string,
-): asserts condition {
-  if (!condition) throw new RuleError(message);
-}
-export function completed(m: Match): boolean {
-  return m.homeScore !== null && m.awayScore !== null;
-}
 export function scopeEntrants(t: Competition, scope: string): Entrant[] {
   return scope === "LEAGUE"
     ? t.entrants
     : t.entrants.filter((e: Entrant): boolean => e.groupId === scope);
 }
-export function pairingKey(a: string, b: string): string {
-  return [a, b].sort().join(":");
-}
-// Circle method: one idle entrant per round for odd-sized fields; all rounds are informational.
-export function roundRobin(
-  ids: string[],
-  legs: number,
-  scope: string = "LEAGUE",
-): ScheduledFixture[] {
-  invariant(new Set(ids).size === ids.length, "Duplicate entrants");
-  invariant(ids.length >= 2, "At least two entrants are required");
-  invariant(legs === 1 || legs === 2, "Choose one or two legs");
-  const ring: (string | null)[] = [...ids];
-  if (ring.length % 2) ring.push(null);
-  const fixtures: ScheduledFixture[] = [];
-  for (let r = 0; r < ring.length - 1; r++) {
-    for (let i = 0; i < ring.length / 2; i++) {
-      let a = ring[i],
-        b = ring[ring.length - 1 - i];
-      if (!a || !b) continue;
-      if ((r + i) % 2) [a, b] = [b, a];
-      fixtures.push({
-        homeId: a,
-        awayId: b,
-        round: r + 1,
-        leg: 1,
-        scope,
-        pairingKey: pairingKey(a, b),
-      });
-      if (legs === 2)
-        fixtures.push({
-          homeId: b,
-          awayId: a,
-          round: r + ring.length,
-          leg: 2,
-          scope,
-          pairingKey: pairingKey(a, b),
-        });
-    }
-    const last = ring.pop();
-    if (last === undefined) throw new RuleError("Fixture ring is empty");
-    ring.splice(1, 0, last);
-  }
-  return fixtures.sort(
-    (a: ScheduledFixture, b: ScheduledFixture): number => a.round - b.round,
-  );
-}
 export function previewFixtures(t: Competition): ScheduledFixture[] {
   invariant(t.entrants.length >= 2, "Add at least two entrants");
+  if (t.format === "KNOCKOUT") return [];
   if (t.format === "LEAGUE")
     return roundRobin(
       t.entrants.map((e: Entrant): string => e.id),
@@ -390,18 +365,61 @@ export function qualificationPreview(
   return { groups, entrantIds };
 }
 export function knockoutEligibility(t: Competition): KnockoutEligibilityResult {
-  invariant(t.qualification, "Confirm group qualification first");
+  invariant(t.status !== "DRAFT", "Start the tournament first");
+  invariant(
+    t.format === "KNOCKOUT" || t.qualification,
+    "Confirm group qualification first",
+  );
   const last = [...t.rounds].sort(
     (a: Round, b: Round): number => b.number - a.number,
   )[0];
   if (!last)
     return {
       round: 1,
-      entrantIds: t.qualification.entrantIds,
+      entrantIds:
+        t.format === "KNOCKOUT"
+          ? t.entrants.map((e: Entrant): string => e.id)
+          : required(t.qualification).entrantIds,
       byeCount:
-        2 ** Math.ceil(Math.log2(t.qualification.entrantIds.length)) -
-        t.qualification.entrantIds.length,
+        2 **
+          Math.ceil(
+            Math.log2(
+              t.format === "KNOCKOUT"
+                ? t.entrants.length
+                : required(t.qualification).entrantIds.length,
+            ),
+          ) -
+        (t.format === "KNOCKOUT"
+          ? t.entrants.length
+          : required(t.qualification).entrantIds.length),
     };
+  const ties = (t.knockoutTies ?? []).filter(
+    (tie: KnockoutTie): boolean => tie.roundId === last.id,
+  );
+  if (ties.length) {
+    invariant(
+      ties.every((tie: KnockoutTie): boolean => !!tie.winnerId),
+      "Finish this knockout round before creating the next",
+    );
+    const ids = [
+      ...ties.map((tie: KnockoutTie): { slot: number; id: string } => ({
+        slot: tie.slot,
+        id: required(tie.winnerId),
+      })),
+      ...last.byes.map(
+        (b: Bye & { slot?: number }): { slot: number; id: string } => ({
+          slot: b.slot ?? 0,
+          id: b.entrantId,
+        }),
+      ),
+    ]
+      .sort(
+        (a: { slot: number }, b: { slot: number }): number => a.slot - b.slot,
+      )
+      .map((x: { id: string }): string => x.id);
+    invariant(ids.length > 1, "The final has already been played");
+    return { round: last.number + 1, entrantIds: ids, byeCount: 0 };
+  }
   const matches = t.matches.filter(
     (m: Match): boolean => m.stage === "KNOCKOUT" && m.round === last.number,
   );
@@ -507,6 +525,7 @@ export function correctionImpact(
   t: Competition,
   m: Match,
   score: ValidateScoreResult,
+  tie?: KnockoutTie,
 ): CorrectionImpactResult {
   const simulated = {
     ...t,
@@ -534,7 +553,14 @@ export function correctionImpact(
         "Qualification becomes incomplete or unresolved; the knockout stage must be rebuilt.";
     }
     if (reason) resetRounds = t.rounds;
-  } else if (m.stage === "KNOCKOUT" && m.winnerId !== score.winnerId) {
+  } else if (
+    m.stage === "KNOCKOUT" &&
+    (tie
+      ? (t.knockoutTies ?? []).find(
+          (x: KnockoutTie): boolean => x.id === tie.id,
+        )?.winnerId !== tie.winnerId
+      : m.winnerId !== score.winnerId)
+  ) {
     resetRounds = t.rounds.filter((r: Round): boolean => r.number > m.round);
     if (resetRounds.length)
       reason =
@@ -569,6 +595,13 @@ export function completion(t: Competition): CompletionResult {
     (a: Round, b: Round): number => b.number - a.number,
   )[0];
   if (last) {
+    const ties = (t.knockoutTies ?? []).filter(
+      (tie: KnockoutTie): boolean => tie.roundId === last.id,
+    );
+    if (ties.length)
+      return ties.length === 1 && !last.byes.length && ties[0].winnerId
+        ? { status: "COMPLETED", championId: ties[0].winnerId }
+        : { status: "ACTIVE", championId: null };
     const matches = t.matches.filter(
       (m: Match): boolean => m.stage === "KNOCKOUT" && m.round === last.number,
     );
@@ -593,10 +626,22 @@ export function tournamentView(t: Competition): TournamentViewResult {
     if (t.format === "WORLD_CUP") qualification = qualificationPreview(t);
   } catch {}
   try {
-    if (t.qualification) eligibility = knockoutEligibility(t);
+    if (t.qualification || t.format === "KNOCKOUT")
+      eligibility = knockoutEligibility(t);
   } catch {}
   return {
     ...t,
+    knockoutLegs: t.knockoutLegs ?? 1,
+    knockoutFinalLegs: t.knockoutFinalLegs ?? 1,
+    knockoutTies: (t.knockoutTies ?? []).map(
+      (
+        tie: KnockoutTie,
+      ): KnockoutTie & { homeAggregate: number; awayAggregate: number } => ({
+        ...tie,
+        ...aggregateOutcome(tie, t.matches),
+        winnerId: tie.winnerId,
+      }),
+    ),
     standings: scopes.map((scope: string): ScopeStanding => ({
       scope,
       rows: standings(t, scope),
