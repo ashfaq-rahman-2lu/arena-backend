@@ -41,7 +41,7 @@ Build from this repository root:
 docker build -t arena-backend .
 ```
 
-Supply production settings through the deployment environment: `NODE_ENV=production`, `HOST=0.0.0.0`, your `PORT`, PostgreSQL `DATABASE_URL`, a private `SESSION_SECRET`, `COOKIE_SECURE=true`, and `FRONTEND_URL=https://arena-tour.pages.dev` (no trailing slash). Set this in the backend hosting service's environment variables; `render.yaml` includes this value for Blueprint deployments. Deploy one API instance. Configure SMTP and optional Google/vision credentials on the API only. The container applies committed migrations before starting; with other hosting, run `npm run db:migrate` as a release step, then `npm start` after `npm run build`.
+Supply production settings through the deployment environment: `NODE_ENV=production`, `HOST=0.0.0.0`, your `PORT`, PostgreSQL `DATABASE_URL`, a private `SESSION_SECRET`, `COOKIE_SECURE=true`, and `FRONTEND_URL=https://arena-tour.pages.dev` (no trailing slash). Set this in the backend hosting service's environment variables; `render.yaml` includes this value for Blueprint deployments. Deploy one API instance. Configure SMTP and optional Google credentials on the API only. PaddleOCR runs locally without API credentials. The container applies committed migrations before starting; with other hosting, run `npm run db:migrate` as a release step, then `npm start` after `npm run build`.
 
 Frontend and API may use sibling HTTPS subdomains, e.g. `app.example.com` and `api.example.com`. Signed HttpOnly cookies use `SameSite=Lax`; credentialed CORS permits only `FRONTEND_URL`. If hosts have different root domains, route `/api` through the frontend's ingress to the separately deployed API to keep browser cookies same-site. Arbitrary cross-site cookie support is not enabled.
 
@@ -86,3 +86,23 @@ BROWSER_DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/arena_browser_tes
 This service applies migrations, clears only that guarded test database, seeds test-only accounts/competitions, injects email/vision fakes, and listens on port 3001. It is not a production server. For frontend CI, package it separately with `docker build --target browser-test -t arena-browser-fixture .`; publish that test image only if you want to run the frontend's manual browser workflow against it.
 
 See `VERIFICATION.md` for current separation checks and `docs/` for historical product/update plans.
+
+## Local score extraction with PaddleOCR
+
+Extraction supports the full eFootball result screenshot represented by `test/fixtures/scorer_image.jpg`. It reads only the two yellow score tiles: left is home, right is away. Team names/aliases and statistics are ignored. It returns a suggestion; users still review and save the result. Penalty/tiebreak values are not extracted. Unreadable or low-confidence scores remain null, including on unsupported layouts; zero remains zero. Keep the entire screenshot with the same layout and aspect ratio; scaled copies are supported, cropped/shifted layouts are not.
+
+Install Python 3.11 or 3.12, then run from this backend repository:
+
+```sh
+python3 -m venv .venv-ocr
+.venv-ocr/bin/pip install -r ocr/requirements.txt
+.venv-ocr/bin/python ocr/score_reader.py --warmup
+```
+
+Set `PADDLEOCR_PYTHON` in `.env` to the absolute path of `.venv-ocr/bin/python`, then start/restart the API. The default is `python3` when dependencies are installed there. Warmup downloads the free English recognition weights once; subsequent extraction runs on CPU locally with a 30-second limit and no OpenAI calls. Run the API from the backend repository root. Docker installs Python and warms up the weights during build; Render uses that Docker image. PaddleOCR increases image size and memory usage; verify available memory on your host.
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
+# Real model regression against the supplied screenshot (requires warmup):
+PADDLEOCR_INTEGRATION=1 PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
+```

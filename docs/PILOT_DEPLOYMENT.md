@@ -10,10 +10,10 @@ Do not run the development seed or acceptance tests against Neon pilot data. Tes
 
 ## Render
 
-Push this backend repository to your Git host. Connect it to a Free Render Web Service using Node runtime, or create a Blueprint from `render.yaml`. The blueprint explicitly chooses the Free plan and creates no Render database.
+Push this backend repository to your Git host. Connect it to a Free Render Web Service using Docker runtime, or create a Blueprint from `render.yaml`. The blueprint explicitly chooses the Free plan and creates no Render database.
 
-- Build command: `npm ci --include=dev && npm run db:generate && npm run build`
-- Start command: `npm run db:migrate && npm start`
+- Dockerfile: `Dockerfile` (includes the CPU PaddleOCR runtime and cached recognition model)
+- Startup: container applies migrations and starts the API
 - Health path: `/api/v1/health`
 - Node version: `24.21.0`
 - `NODE_ENV=production`, `HOST=0.0.0.0`, `COOKIE_SECURE=true`
@@ -40,7 +40,7 @@ The callback must use the Pages domain because OAuth state and session cookies p
 
 Google callbacks include optional `scope`, `authuser`, `prompt`, `hd`, and `iss` query metadata. The callback accepts bounded strings for these fields while still validating the required state/code and signed state cookie. Identity and account linking use Google's verified userinfo response, not callback metadata. A `400 VALIDATION_FAILED` immediately after consent on an older deployment can mean its callback DTO rejects these standard fields; deploy the callback validation fix and restart sign-in from the frontend.
 
-Keep `OPENAI_API_KEY` unset for a pilot that must avoid paid vision calls. Manual score entry remains available; scorecard extraction needs separately funded/configured credentials.
+Scorecard extraction uses local PaddleOCR with no API key or per-image fees. The Docker build downloads the free recognition model once. It reads home/away scores by their positions in the supported eFootball template and ignores team names. Confirm that the host has enough memory for the Node API plus PaddleOCR; manual entry remains available if extraction fails.
 
 ## Free-service behavior
 

@@ -5389,7 +5389,8 @@
         "type": "object",
         "properties": {
           "matched": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Scores are assigned by template position: left is home, right is away. No team-name matching is performed."
           },
           "observedSides": {
             "type": "array",

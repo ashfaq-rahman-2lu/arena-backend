@@ -13,6 +13,7 @@ for (const patch of [
   { DATABASE_URL: "https://invalid.test" },
   { AUTH_RATE_LIMIT: "-1" },
   { EXTRACTION_RATE_LIMIT: "Infinity" },
+  { PADDLEOCR_PYTHON: "" },
   { GOOGLE_CLIENT_ID: "partial" },
   { SMTP_USER: "partial" },
   { NODE_ENV: "production", COOKIE_SECURE: "false" },
@@ -25,5 +26,5 @@ test("optional integrations are represented as disabled", (): void => {
   const config = validateConfiguration(valid);
   assert.equal(config.smtp, null);
   assert.equal(config.google, null);
-  assert.equal(config.vision, null);
+  assert.deepEqual(config.vision, { python: "python3" });
 });

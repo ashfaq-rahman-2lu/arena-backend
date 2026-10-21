@@ -67,11 +67,11 @@ const fakeHttp: HttpTransport = {
 const fakeVision: VisionProvider = {
   read: async (
     _image: Buffer,
-    entrants: Entrant[],
+    _entrants: Entrant[],
   ): Promise<import("../../src/extraction/extraction.models").Extracted> => ({
     sides: [
-      { name: entrants[1].name, score: 1, tiebreak: null },
-      { name: entrants[0].name, score: 4, tiebreak: null },
+      { name: null, score: 4, tiebreak: null },
+      { name: "Unrelated team", score: 1, tiebreak: null },
     ],
     warnings: [],
   }),
@@ -200,7 +200,6 @@ beforeEach(async (): Promise<void> => {
     GOOGLE_CLIENT_ID: "test-client",
     GOOGLE_CLIENT_SECRET: "test-secret",
     GOOGLE_CALLBACK_URL: "http://localhost:5173/api/v1/auth/google/callback",
-    OPENAI_API_KEY: "",
   };
   app = await createApp({
     environment,
@@ -1043,7 +1042,6 @@ test("configured auth rate limit applies per process and returns a safe code", a
       SMTP_PASSWORD: "",
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
-      OPENAI_API_KEY: "",
     },
     email: fakeEmail,
     vision: fakeVision,

@@ -7,3 +7,5 @@
 **/test-results/**
 **/*.md
 **/.agents/**
+**/.venv-ocr/**
+**/.cache/**

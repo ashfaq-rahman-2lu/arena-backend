@@ -82,11 +82,7 @@ export class TournamentsService {
     userId: string,
     query: PageQuery,
   ): Promise<HistoryPage> {
-    console.log("history", id, query);
-
     await this.owned(id, userId);
-    console.log("history", id, query);
-
     return this.repository.history(id, query);
   }
   load(id: string, client?: Tx): Promise<TournamentAggregate> {

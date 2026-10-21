@@ -220,10 +220,7 @@ export class TournamentsRepository {
     id: string,
     tx: TransactionClient = this.db,
   ): Promise<TournamentAggregate> {
-    console.log("history", id);
-
     const t = await tx.tournament.findUnique({ where: { id }, include });
-    console.log("", id);
     if (!t)
       throw new ApplicationError("NOT_FOUND", 404, "Tournament not found");
     return mapAggregate(t);

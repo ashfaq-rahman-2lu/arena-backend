@@ -17,3 +17,8 @@ npm-debug.log*
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Local PaddleOCR environment and model caches
+.venv-ocr/
+.cache/
+__pycache__/
