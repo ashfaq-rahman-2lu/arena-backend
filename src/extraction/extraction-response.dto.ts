@@ -1,8 +1,34 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 export class ObservedSide {
   @ApiProperty({ type: String, nullable: true }) name!: string | null;
   @ApiProperty({ type: Number, nullable: true }) score!: number | null;
   @ApiProperty({ type: Number, nullable: true }) tiebreak!: number | null;
+}
+export class ExtractedMatchStat {
+  @ApiProperty({
+    enum: [
+      "possession",
+      "shots",
+      "shotsOnTarget",
+      "fouls",
+      "offsides",
+      "cornerKicks",
+      "freeKicks",
+      "passes",
+      "successfulPasses",
+      "crosses",
+      "interceptions",
+      "tackles",
+      "saves",
+    ],
+  })
+  key!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, maximum: 9999 })
+  home!: number | null;
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, maximum: 9999 })
+  away!: number | null;
+  @ApiProperty({ enum: ["percent", "count"] }) unit!: "percent" | "count";
 }
 export class ExtractionSuggestion {
   @ApiProperty({
@@ -16,5 +42,11 @@ export class ExtractionSuggestion {
   @ApiProperty({ type: Number, nullable: true }) awayScore!: number | null;
   @ApiProperty({ type: Number, nullable: true }) homeTiebreak!: number | null;
   @ApiProperty({ type: Number, nullable: true }) awayTiebreak!: number | null;
+  @ApiPropertyOptional({
+    type: [ExtractedMatchStat],
+    description:
+      "All thirteen match stat rows; unreadable cells are null. Suggestions only.",
+  })
+  stats?: ExtractedMatchStat[];
   @ApiProperty({ type: [String] }) warnings!: string[];
 }

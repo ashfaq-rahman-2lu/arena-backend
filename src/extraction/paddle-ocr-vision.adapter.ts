@@ -3,14 +3,15 @@ import { z } from "zod";
 import { ApplicationError } from "../common/application-error";
 import { ConfigurationService } from "../config/configuration.service";
 import { Entrant } from "../domain/engine";
-import { Extracted, VisionProvider } from "./extraction.models";
+import { Extracted, matchStats, VisionProvider } from "./extraction.models";
 import { OcrProcess } from "./paddle-ocr-process.adapter";
 
 const score = z.number().int().min(0).max(99).nullable();
 const resultSchema = z.object({
   homeScore: score,
   awayScore: score,
-  warnings: z.array(z.string().max(500)).max(20),
+  stats: matchStats,
+  warnings: z.array(z.string().max(500)).max(40),
 });
 
 @Injectable()
@@ -34,6 +35,7 @@ export class PaddleOcrVisionAdapter extends VisionProvider {
           { name: null, score: result.homeScore, tiebreak: null },
           { name: null, score: result.awayScore, tiebreak: null },
         ],
+        stats: result.stats,
         warnings: result.warnings,
       };
     } catch {

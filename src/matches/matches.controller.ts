@@ -16,6 +16,7 @@ import {
   ApiCookieAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiSecurity,
   ApiTags,
 } from "@nestjs/swagger";
@@ -48,6 +49,11 @@ export class MatchesController {
     return this.matches.save(id, actor(request), input);
   }
   @Post(":matchId/extract-score")
+  @ApiOperation({
+    summary: "Extract scores and match stats for an eFootball tournament",
+    description:
+      "Only available when the match belongs to an EFOOTBALL tournament. Other games return 400 RULE_VIOLATION; manual result entry remains available.",
+  })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {

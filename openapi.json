@@ -3385,6 +3385,7 @@
     },
     "/api/v1/matches/{matchId}/extract-score": {
       "post": {
+        "description": "Only available when the match belongs to an EFOOTBALL tournament. Other games return 400 RULE_VIOLATION; manual result entry remains available.",
         "operationId": "MatchesController_extract",
         "parameters": [
           {
@@ -3516,6 +3517,7 @@
             "cookie": []
           }
         ],
+        "summary": "Extract scores and match stats for an eFootball tournament",
         "tags": [
           "matches"
         ]
@@ -5385,6 +5387,58 @@
           "tiebreak"
         ]
       },
+      "ExtractedMatchStat": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "possession",
+              "shots",
+              "shotsOnTarget",
+              "fouls",
+              "offsides",
+              "cornerKicks",
+              "freeKicks",
+              "passes",
+              "successfulPasses",
+              "crosses",
+              "interceptions",
+              "tackles",
+              "saves"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "home": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 9999
+          },
+          "away": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 9999
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "count"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "home",
+          "away",
+          "unit"
+        ]
+      },
       "ExtractionSuggestion": {
         "type": "object",
         "properties": {
@@ -5413,6 +5467,13 @@
           "awayTiebreak": {
             "type": "number",
             "nullable": true
+          },
+          "stats": {
+            "description": "All thirteen match stat rows; unreadable cells are null. Suggestions only.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExtractedMatchStat"
+            }
           },
           "warnings": {
             "type": "array",

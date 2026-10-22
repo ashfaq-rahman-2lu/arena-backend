@@ -2,7 +2,7 @@ import { Logger } from "@nestjs/common";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import sharp from "sharp";
-import { VisionProvider } from "../src/extraction/extraction.models";
+import { extracted, VisionProvider } from "../src/extraction/extraction.models";
 import {
   ExtractionService as Extraction,
   mapExtraction,
@@ -199,6 +199,39 @@ test(
     assert.equal(result.homeScore, 1);
     assert.equal(result.awayScore, 2);
     assert.equal(result.matched, true);
+    assert.equal(result.stats.length, 13);
+    assert.deepEqual(
+      result.stats.find(
+        (
+          stat: import("../src/extraction/extraction.models").MatchStat,
+        ): boolean => stat.key === "passes",
+      ),
+      {
+        key: "passes",
+        label: "Passes",
+        home: 115,
+        away: 79,
+        unit: "count",
+      },
+    );
     assert.deepEqual(result.warnings, []);
   },
 );
+
+test("stat suggestions survive provider validation and positional mapping", (): void => {
+  const stats = [
+    { key: "offsides", label: "Offsides", home: 1, away: 0, unit: "count" },
+  ];
+  const result = mapExtraction(
+    extracted.parse({
+      sides: [
+        { name: null, score: 1, tiebreak: null },
+        { name: null, score: 2, tiebreak: null },
+      ],
+      warnings: [],
+      stats,
+    }),
+    entrants,
+  );
+  assert.deepEqual(Reflect.get(result, "stats"), stats);
+});

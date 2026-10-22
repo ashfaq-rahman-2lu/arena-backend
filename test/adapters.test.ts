@@ -75,7 +75,12 @@ for (const scenario of ["timeout", "malformed envelope", "malformed score"])
         if (scenario === "timeout") throw new Error("provider secret");
         return scenario === "malformed envelope"
           ? "not json"
-          : JSON.stringify({ homeScore: -1, awayScore: 2, warnings: [] });
+          : JSON.stringify({
+              homeScore: -1,
+              awayScore: 2,
+              stats: [],
+              warnings: [],
+            });
       },
     };
     const config = new ConfigurationService(
@@ -113,15 +118,76 @@ test("PaddleOCR returns positional scores with no name matching or HTTP request"
     run: async (python: string, image: Buffer): Promise<string> => {
       assert.equal(python, "/opt/ocr/bin/python");
       assert.equal(image.toString(), "image");
-      return JSON.stringify({ homeScore: 1, awayScore: 2, warnings: [] });
+      return JSON.stringify({
+        homeScore: 1,
+        awayScore: 2,
+        warnings: [],
+        stats: [
+          {
+            key: "possession",
+            label: "Possession",
+            home: 55,
+            away: 45,
+            unit: "percent",
+          },
+          {
+            key: "passes",
+            label: "Passes",
+            home: 115,
+            away: null,
+            unit: "count",
+          },
+        ],
+      });
     },
   };
   const result = await new PaddleOcrVisionAdapter(config, process).read(
     Buffer.from("image"),
     [],
   );
+  assert.deepEqual(Reflect.get(result, "stats"), [
+    {
+      key: "possession",
+      label: "Possession",
+      home: 55,
+      away: 45,
+      unit: "percent",
+    },
+    { key: "passes", label: "Passes", home: 115, away: null, unit: "count" },
+  ]);
   assert.deepEqual(result.sides, [
     { name: null, score: 1, tiebreak: null },
     { name: null, score: 2, tiebreak: null },
   ]);
 });
+
+for (const stats of [
+  [
+    {
+      key: "possession",
+      label: "Possession",
+      home: 101,
+      away: 45,
+      unit: "percent",
+    },
+  ],
+  [{ key: "passes", label: "Passes", home: -1, away: 79, unit: "count" }],
+  [{ key: "passes", label: "Passes", home: 115, away: 79, unit: "percent" }],
+]) {
+  test(`rejects invalid stat payload ${JSON.stringify(stats)}`, async (): Promise<void> => {
+    const config = new ConfigurationService(
+      new ConfigService({ arena: validateConfiguration(offlineEnvironment) }),
+    );
+    const process: OcrProcess = {
+      run: async (_python: string, _image: Buffer): Promise<string> =>
+        JSON.stringify({ homeScore: 1, awayScore: 2, stats, warnings: [] }),
+    };
+    await assert.rejects(
+      new PaddleOcrVisionAdapter(config, process).read(
+        Buffer.from("image"),
+        [],
+      ),
+      ApplicationError,
+    );
+  });
+}

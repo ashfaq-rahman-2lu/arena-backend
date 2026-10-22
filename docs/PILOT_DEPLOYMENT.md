@@ -40,7 +40,7 @@ The callback must use the Pages domain because OAuth state and session cookies p
 
 Google callbacks include optional `scope`, `authuser`, `prompt`, `hd`, and `iss` query metadata. The callback accepts bounded strings for these fields while still validating the required state/code and signed state cookie. Identity and account linking use Google's verified userinfo response, not callback metadata. A `400 VALIDATION_FAILED` immediately after consent on an older deployment can mean its callback DTO rejects these standard fields; deploy the callback validation fix and restart sign-in from the frontend.
 
-Scorecard extraction uses local PaddleOCR with no API key or per-image fees. The Docker build downloads the free recognition model once. It reads home/away scores by their positions in the supported eFootball template and ignores team names. Confirm that the host has enough memory for the Node API plus PaddleOCR; manual entry remains available if extraction fails.
+Scorecard extraction uses local PaddleOCR with no API key or per-image fees. The Docker build downloads the free recognition model once. It reads home/away scores and all 13 match statistic rows by position in the supported eFootball template and ignores team names. Stats are returned as suggestions and displayed for review; only scores are persisted when saving a result. Confirm that the host has enough memory for the Node API plus PaddleOCR; manual entry remains available if extraction fails.
 
 ## Free-service behavior
 

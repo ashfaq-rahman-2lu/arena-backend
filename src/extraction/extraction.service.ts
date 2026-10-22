@@ -9,6 +9,7 @@ export type MapExtractionResult = {
   awayScore: number | null;
   homeTiebreak: number | null;
   awayTiebreak: number | null;
+  stats: MatchStat[];
   warnings: string[];
 };
 export type ReadResult = {
@@ -22,13 +23,19 @@ export type ReadResult = {
   awayScore: number | null;
   homeTiebreak: number | null;
   awayTiebreak: number | null;
+  stats: MatchStat[];
   warnings: string[];
 };
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import sharp from "sharp";
 import { ApplicationError } from "../common/application-error";
 import { Entrant } from "../domain/engine";
-import { Extracted, extracted, VisionProvider } from "./extraction.models";
+import {
+  Extracted,
+  extracted,
+  MatchStat,
+  VisionProvider,
+} from "./extraction.models";
 // The supported scorecard template always shows home on the left, away on the right.
 export function mapExtraction(
   result: Extracted,
@@ -41,6 +48,7 @@ export function mapExtraction(
     awayScore: result.sides[1].score,
     homeTiebreak: null,
     awayTiebreak: null,
+    stats: result.stats ?? [],
     warnings: result.warnings,
   };
 }

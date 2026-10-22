@@ -73,6 +73,9 @@ const fakeVision: VisionProvider = {
       { name: null, score: 4, tiebreak: null },
       { name: "Unrelated team", score: 1, tiebreak: null },
     ],
+    stats: [
+      { key: "passes", label: "Passes", home: 115, away: 79, unit: "count" },
+    ],
     warnings: [],
   }),
 };
@@ -582,6 +585,10 @@ test("extraction checks ownership, rejects invalid uploads, and does not persist
       readResponse<ExtractionSuggestion>(result, "ExtractionSuggestion")
         .homeScore,
       4,
+    );
+    assert.deepEqual(
+      readResponse<ExtractionSuggestion>(result, "ExtractionSuggestion").stats,
+      [{ key: "passes", label: "Passes", home: 115, away: 79, unit: "count" }],
     );
     assert.equal(
       required(await db.match.findUnique({ where: { id: m.id } })).homeScore,
@@ -1449,5 +1456,43 @@ test("qualification and participant additions serialize without partial stage ch
     latest.qualification
       ? latest.entrants.length === 4
       : latest.entrants.length === 5,
+  );
+});
+
+test("scorecard extraction is restricted to eFootball tournaments", async (): Promise<void> => {
+  const t = await start(await create(admin, { ...initial, game: "CODM" }));
+  const m = t.matches[0];
+  const image = await sharp({
+    create: { width: 50, height: 50, channels: 3, background: "white" },
+  })
+    .png()
+    .toBuffer();
+  await other
+    .post(`${base}/matches/${m.id}/extract-score`)
+    .set("X-CSRF-Token", otherCsrf)
+    .attach("image", image, "score.png")
+    .expect(403);
+  const result = await admin
+    .post(`${base}/matches/${m.id}/extract-score`)
+    .set("X-CSRF-Token", csrf)
+    .attach("image", image, "score.png")
+    .expect(400);
+  const error = readResponse<ApiError>(result, "ApiError");
+  assert.equal(error.code, "RULE_VIOLATION");
+  assert.equal(
+    error.message,
+    "Scorecard upload is only available for eFootball tournaments.",
+  );
+  assert.equal(
+    required(await db.match.findUnique({ where: { id: m.id } })).homeScore,
+    null,
+  );
+  const saved = readResponse<TournamentView>(
+    await score(t, m, 9, 4).expect(200),
+    "TournamentView",
+  );
+  assert.equal(
+    saved.matches.find((match: Match): boolean => match.id === m.id)?.homeScore,
+    9,
   );
 });
