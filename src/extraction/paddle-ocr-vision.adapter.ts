@@ -1,18 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { z } from "zod";
+import { ocrResultSchema as resultSchema } from "./ocr-worker.models";
 import { ApplicationError } from "../common/application-error";
 import { ConfigurationService } from "../config/configuration.service";
 import { Entrant } from "../domain/engine";
-import { Extracted, matchStats, VisionProvider } from "./extraction.models";
+import { Extracted, VisionProvider } from "./extraction.models";
 import { OcrProcess } from "./paddle-ocr-process.adapter";
-
-const score = z.number().int().min(0).max(99).nullable();
-const resultSchema = z.object({
-  homeScore: score,
-  awayScore: score,
-  stats: matchStats,
-  warnings: z.array(z.string().max(500)).max(40),
-});
 
 @Injectable()
 export class PaddleOcrVisionAdapter extends VisionProvider {

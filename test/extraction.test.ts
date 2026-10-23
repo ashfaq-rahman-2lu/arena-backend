@@ -187,37 +187,44 @@ test(
         }),
       }),
     );
+    const worker = new PaddleOcrProcessAdapter(config, new Logger());
     const service = new Extraction(
-      new PaddleOcrVisionAdapter(
-        config,
-        new PaddleOcrProcessAdapter(config, new Logger()),
-      ),
+      new PaddleOcrVisionAdapter(config, worker),
       logger,
     );
-    const image = await readFile("test/fixtures/scorer_image.jpg");
-    const result = await service.read(
-      { buffer: image, size: image.length } as Express.Multer.File,
-      entrants,
-    );
-    assert.equal(result.homeScore, 1);
-    assert.equal(result.awayScore, 2);
-    assert.equal(result.matched, true);
-    assert.equal(result.stats.length, 13);
-    assert.deepEqual(
-      result.stats.find(
-        (
-          stat: import("../src/extraction/extraction.models").MatchStat,
-        ): boolean => stat.key === "passes",
-      ),
-      {
-        key: "passes",
-        label: "Passes",
-        home: 115,
-        away: 79,
-        unit: "count",
-      },
-    );
-    assert.deepEqual(result.warnings, []);
+    try {
+      const image = await readFile("test/fixtures/scorer_image.jpg");
+      const result = await service.read(
+        { buffer: image, size: image.length } as Express.Multer.File,
+        entrants,
+      );
+      assert.equal(result.homeScore, 1);
+      assert.equal(result.awayScore, 2);
+      assert.equal(result.matched, true);
+      assert.equal(result.stats.length, 13);
+      assert.deepEqual(
+        result.stats.find(
+          (
+            stat: import("../src/extraction/extraction.models").MatchStat,
+          ): boolean => stat.key === "passes",
+        ),
+        {
+          key: "passes",
+          label: "Passes",
+          home: 115,
+          away: 79,
+          unit: "count",
+        },
+      );
+      assert.deepEqual(result.warnings, []);
+      const repeated = await service.read(
+        { buffer: image, size: image.length } as Express.Multer.File,
+        entrants,
+      );
+      assert.deepEqual(repeated, result);
+    } finally {
+      await worker.onModuleDestroy();
+    }
   },
 );
 

@@ -11,6 +11,13 @@ import os
 from pathlib import Path
 import re
 import sys
+import struct
+import time
+from typing import BinaryIO, TextIO, Protocol, Iterable
+
+
+class RecognitionModel(Protocol):
+    def predict(self, input: list, batch_size: int) -> Iterable[dict]: ...
 
 # Normalized against the user's 2048 x 945 reference. Scaled copies are supported.
 SCORE_BOXES = ((915 / 2048, 143 / 945, 985 / 2048, 212 / 945),
@@ -91,14 +98,24 @@ def create_model():
 
 
 
-def read_scores(image_bytes: bytes) -> dict:
+def read_scores(image_bytes: bytes, model: RecognitionModel | None = None, timings: dict[str, float] | None = None) -> dict:
+    preparation_started = time.perf_counter()
+    if timings is not None:
+        timings.update(prepareMs=0.0, inferenceMs=0.0)
     try:
         crops = score_crops(image_bytes)
     except ValueError:
         return {"homeScore": None, "awayScore": None,
                 "stats": [], "warnings": ["Use the full eFootball screenshot with the yellow score boxes, matching the supported template."]}
-    model = create_model()
+    finally:
+        if timings is not None:
+            timings["prepareMs"] = (time.perf_counter() - preparation_started) * 1000
+    if model is None:
+        model = create_model()
+    inference_started = time.perf_counter()
     predictions = list(model.predict(input=crops, batch_size=8))
+    if timings is not None:
+        timings["inferenceMs"] = (time.perf_counter() - inference_started) * 1000
     if len(predictions) != 2 + len(STAT_ROWS) * 2:
         raise ValueError("Incomplete OCR predictions")
     scores = [parse_score(str(item["rec_text"]), float(item["rec_score"])) for item in predictions[:2]]
@@ -115,7 +132,56 @@ def read_scores(image_bytes: bytes) -> dict:
     return {"homeScore": scores[0], "awayScore": scores[1], "stats": stats, "warnings": warnings}
 
 
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
+
+def read_exact(source: BinaryIO, count: int) -> bytes:
+    chunks = bytearray()
+    while len(chunks) < count:
+        chunk = source.read(count - len(chunks))
+        if not chunk:
+            break
+        chunks.extend(chunk)
+    return bytes(chunks)
+
+
+def emit(output: TextIO, message: dict) -> None:
+    output.write(json.dumps(message, allow_nan=False) + "\n")
+    output.flush()
+
+
+def serve_worker(source: BinaryIO, output: TextIO) -> None:
+    started = time.perf_counter()
+    with contextlib.redirect_stdout(sys.stderr):
+        model = create_model()
+    emit(output, {"type": "ready", "modelLoadMs": (time.perf_counter() - started) * 1000})
+    while True:
+        header = read_exact(source, 4)
+        if not header:
+            return
+        try:
+            if len(header) != 4:
+                raise ValueError("Incomplete frame")
+            size = struct.unpack(">I", header)[0]
+            if size > MAX_IMAGE_BYTES:
+                raise ValueError("Frame too large")
+            image_bytes = read_exact(source, size)
+            if len(image_bytes) != size:
+                raise ValueError("Incomplete image")
+            timings: dict[str, float] = {}
+            with contextlib.redirect_stdout(sys.stderr):
+                result = read_scores(image_bytes, model, timings)
+            emit(output, {"type": "result", "result": result, "timings": timings})
+        except Exception:
+            # No image, prediction, or arbitrary exception text crosses the diagnostic boundary.
+            emit(output, {"type": "error"})
+            return
+
+
 def main() -> None:
+    if sys.argv[1:] == ["--worker"]:
+        serve_worker(sys.stdin.buffer, sys.stdout)
+        return
     # Paddle's diagnostic output must never corrupt the JSON protocol.
     with contextlib.redirect_stdout(sys.stderr):
         if sys.argv[1:] == ["--warmup"]:

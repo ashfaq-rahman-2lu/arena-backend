@@ -107,4 +107,39 @@ PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
 PADDLEOCR_INTEGRATION=1 PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
 ```
 
-OCR process failures log `ocr_process_failure` with a safe reason (`timeout`, `spawn_failed`, `process_exit`, or `output_limit`), duration, exit code, and signal. Image data and raw Python stderr are not logged. The timeout includes Python startup and model loading for each upload. The frontend proxy has a 90-second timeout; keep the OCR budget below that when using the proxy. Increasing the budget does not resolve memory-related process kills.
+### Persistent OCR worker and timings
+
+The API starts one Python worker in the background at application bootstrap and loads the recognition model once. API health and manual score entry remain available while OCR warms up. Tests and offline OpenAPI generation do not start the real worker. The Docker build's `--warmup` downloads weights; the running worker initializes the in-memory model.
+
+Uploads use a bounded binary protocol over the worker's stdin. One image is processed at a time, with at most two additional requests waiting. The `PADDLEOCR_TIMEOUT_MS` budget includes waiting, startup (if still warming), and inference. Excess work fails safely rather than spawning more model copies. A timeout, crash, or invalid worker response rejects affected requests and terminates that worker; the next request can start a replacement after it closes. Failed images are never automatically retried. Application shutdown terminates the worker and settles pending requests.
+
+Structured logs contain only timing and process metadata:
+
+- `ocr_worker_ready`: `startupMs` (Python launch plus initialization), `modelLoadMs` (PaddleOCR import and model creation).
+- `ocr_phases`: `queueMs`, `prepareMs` (image decoding and crops), `inferenceMs`, and `totalMs` (request time including waiting).
+- `ocr_process_failure`: safe reason, duration, exit code, and signal. Images, results, raw Python stderr, and executable paths are not logged.
+
+`queueMs` includes any remaining startup wait; do not add `startupMs` to it when calculating request totals. The first inference after a restart can still have initialization overhead. The frontend proxy has a 90-second timeout; keep the OCR request budget below that when using the proxy. Model reuse reduces repeated startup work, but does not increase available CPU or memory. The one-shot CLI and build-time `--warmup` remain supported.
+
+### Better Stack log collection through Render
+
+With `NODE_ENV=production`, the injected application logger and Nest startup logs emit one JSON object per line to stdout/stderr. Development retains readable console output; test logging is disabled. OCR events pass objects to the logger so durations remain numeric, searchable properties instead of JSON strings inside the message. No logging SDK, database, application-side network delivery, or Better Stack environment variables are required.
+
+Example production entry (illustrative values):
+
+```json
+{"level":"log","pid":123,"timestamp":1792759200000,"message":{"event":"ocr_phases","queueMs":0,"totalMs":3260,"prepareMs":40,"inferenceMs":3200},"context":"Arena"}
+```
+
+Configure forwarding once in the hosting dashboards:
+
+1. In Better Stack, open **Telemetry → Sources → Connect source**. Name it **Arena backend** and select **Logs & Metrics → Render**.
+2. Copy the source's **Ingesting host** and **Source token**. Keep the token private and outside source control.
+3. In the Render workspace, open **Integrations → Observability → Log Streams → Set default**.
+4. Set **Log Endpoint** to the ingesting hostname followed by `:6514` (without an `https://` prefix), and set **Token** to the source token. Save. This workspace default forwards supported services; review the workspace scope before enabling it.
+5. Deploy the backend, then run one scorecard extraction. In Better Stack, open **Live tail**, select **Arena backend**, and search for `ocr_phases`, `ocr_worker_ready`, or `ocr_process_failure`.
+6. Expand an entry to inspect `message.event`, `message.inferenceMs`, `message.queueMs`, and the other timing fields. Field paths may appear under the parsed log payload depending on Better Stack's Render transformation. Start with text search to confirm delivery.
+
+Forwarding collects new logs; it does not backfill previous logs. Retention and ingestion limits belong to the selected provider plan. These code changes do not create an account, configure a Render log stream, add alerts, or enable request tracing. Existing safe diagnostics remain in effect: uploaded images, extracted scores/statistics, credentials, and raw OCR stderr are not added to logs.
+
+Setup reference: [Render log streams and Better Stack](https://render.com/docs/log-streams#better-stack).

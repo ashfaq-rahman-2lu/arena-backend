@@ -103,22 +103,18 @@ export class ExtractionService {
         extracted.parse(await this.provider.read(image, entrants)),
         entrants,
       );
-      this.log.log(
-        JSON.stringify({
-          event: "extraction",
-          ok: true,
-          ms: Date.now() - start,
-        }),
-      );
+      this.log.log({
+        event: "extraction",
+        ok: true,
+        ms: Date.now() - start,
+      });
       return result;
     } catch (e) {
-      this.log.warn(
-        JSON.stringify({
-          event: "extraction",
-          ok: false,
-          ms: Date.now() - start,
-        }),
-      );
+      this.log.warn({
+        event: "extraction",
+        ok: false,
+        ms: Date.now() - start,
+      });
       if (e instanceof ApplicationError) throw e;
       throw new ApplicationError(
         "INTEGRATION_UNAVAILABLE",

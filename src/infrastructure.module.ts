@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import "reflect-metadata";
 
 import { ApiExceptionFilter } from "./common/api-exception.filter";
+import { ApplicationLoggerService } from "./common/application-logger.service";
 import { FetchHttpAdapter, HttpTransport } from "./common/fetch-http.adapter";
 import { validateConfiguration } from "./config/configuration";
 import { ConfigurationService } from "./config/configuration.service";
@@ -25,7 +26,8 @@ export class InfrastructureModule {
       ],
       providers: [
         ConfigurationService,
-        Logger,
+        ApplicationLoggerService,
+        { provide: Logger, useExisting: ApplicationLoggerService },
         ApiExceptionFilter,
         { provide: HttpTransport, useClass: FetchHttpAdapter },
       ],
