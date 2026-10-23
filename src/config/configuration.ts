@@ -14,6 +14,7 @@ export interface GoogleConfiguration {
 }
 export interface VisionConfiguration {
   python: string;
+  timeoutMs: number;
 }
 export interface ApplicationConfiguration {
   databaseUrl: string;
@@ -71,6 +72,7 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().optional(),
   PADDLEOCR_PYTHON: z.string().min(1).default("python3"),
+  PADDLEOCR_TIMEOUT_MS: positive.max(300000).default(75000),
 });
 export function validateConfiguration(
   env: Record<string, unknown>,
@@ -130,7 +132,10 @@ export function validateConfiguration(
             callbackUrl: value.GOOGLE_CALLBACK_URL,
           }
         : null,
-    vision: { python: value.PADDLEOCR_PYTHON },
+    vision: {
+      python: value.PADDLEOCR_PYTHON,
+      timeoutMs: value.PADDLEOCR_TIMEOUT_MS,
+    },
   };
 }
 export const offlineEnvironment: Record<string, string> = {

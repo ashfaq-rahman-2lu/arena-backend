@@ -188,7 +188,10 @@ test(
       }),
     );
     const service = new Extraction(
-      new PaddleOcrVisionAdapter(config, new PaddleOcrProcessAdapter()),
+      new PaddleOcrVisionAdapter(
+        config,
+        new PaddleOcrProcessAdapter(config, new Logger()),
+      ),
       logger,
     );
     const image = await readFile("test/fixtures/scorer_image.jpg");
