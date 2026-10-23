@@ -222,6 +222,17 @@ test(
         entrants,
       );
       assert.deepEqual(repeated, result);
+      const bordered = await readFile(
+        "test/fixtures/scorer_image_bordered.jpg",
+      );
+      const borderedResult = await service.read(
+        { buffer: bordered, size: bordered.length } as Express.Multer.File,
+        entrants,
+      );
+      assert.equal(borderedResult.homeScore, 4);
+      assert.equal(borderedResult.awayScore, 5);
+      assert.equal(borderedResult.stats.length, 13);
+      assert.deepEqual(borderedResult.warnings, []);
     } finally {
       await worker.onModuleDestroy();
     }

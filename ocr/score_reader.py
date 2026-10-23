@@ -13,15 +13,16 @@ import re
 import sys
 import struct
 import time
-from typing import BinaryIO, TextIO, Protocol, Iterable
+from typing import BinaryIO, TextIO, Protocol, Iterable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 
 class RecognitionModel(Protocol):
     def predict(self, input: list, batch_size: int) -> Iterable[dict]: ...
 
-# Normalized against the user's 2048 x 945 reference. Scaled copies are supported.
-SCORE_BOXES = ((915 / 2048, 143 / 945, 985 / 2048, 212 / 945),
-               (1063 / 2048, 143 / 945, 1133 / 2048, 212 / 945))
+PixelBox = tuple[int, int, int, int]
 
 STAT_ROWS = (
     ("possession", "Possession"), ("shots", "Shots"),
@@ -51,6 +52,93 @@ def parse_score(text: str, confidence: float) -> int | None:
     return int(text) if re.fullmatch(r"[0-9]{1,2}", text) else None
 
 
+def true_runs(values: Iterable[bool]) -> list[tuple[int, int]]:
+    runs: list[tuple[int, int]] = []
+    start: int | None = None
+    for index, value in enumerate(values):
+        if value and start is None:
+            start = index
+        elif not value and start is not None:
+            runs.append((start, index))
+            start = None
+    if start is not None:
+        runs.append((start, index + 1))
+    return runs
+
+
+def find_score_boxes(image: "Image.Image") -> tuple[PixelBox, PixelBox]:
+    import numpy as np
+    from PIL import Image
+
+    # Bound detection work independently of upload resolution. Only the scoreboard
+    # region is searched; the thirteen statistic rows keep their existing crops.
+    scale = min(1.0, 1024 / image.width)
+    reduced = image.resize((round(image.width * scale), round(image.height * scale)), Image.Resampling.NEAREST)
+    width, height = reduced.size
+    left, right = round(width * 0.30), round(width * 0.70)
+    top, bottom = round(height * 0.05), round(height * 0.28)
+    pixels = np.asarray(reduced)[top:bottom, left:right]
+    yellow = (pixels[:, :, 0] > 150) & (pixels[:, :, 1] > 150) & (pixels[:, :, 2] < 120)
+    # Use signed channels so subtraction cannot wrap uint8 values.
+    channels = pixels.astype(np.int16)
+    navy = ((channels[:, :, 0] < 110) & (channels[:, :, 1] < 110)
+            & (channels[:, :, 2] < 180) & (channels[:, :, 2] > channels[:, :, 0] + 15)
+            & (channels[:, :, 2] > channels[:, :, 1] + 15))
+    spans: set[tuple[int, int]] = set()
+    candidates: set[PixelBox] = set()
+    for row in yellow:
+        for x1, x2 in true_runs(row):
+            span_width = x2 - x1
+            if not width * 0.02 <= span_width <= width * 0.065 or (x1, x2) in spans:
+                continue
+            spans.add((x1, x2))
+            if len(spans) > 256:
+                raise ValueError("Ambiguous scoreboard")
+            strip = max(1, round(span_width * 0.08))
+            if x1 < strip or x2 + strip > yellow.shape[1]:
+                continue
+            # The tile's sides remain yellow through digit rows. Navy immediately
+            # outside them distinguishes the boxes from the full-width yellow bar.
+            rows = ((yellow[:, x1:x1 + strip].mean(axis=1) >= 0.7)
+                    & (yellow[:, x2 - strip:x2].mean(axis=1) >= 0.7)
+                    & (yellow[:, x1 - strip:x1].mean(axis=1) < 0.4)
+                    & (yellow[:, x2:x2 + strip].mean(axis=1) < 0.4))
+            for y1, y2 in true_runs(rows):
+                span_height = y2 - y1
+                if (height * 0.045 <= span_height <= height * 0.12
+                        and 0.65 <= span_width / span_height <= 1.6
+                        and float(yellow[y1:y2, x1:x2].mean()) >= 0.55):
+                    candidates.add((x1, y1, x2, y2))
+    # JPEG edges may yield several almost identical rectangles. Retain the largest
+    # representative before requiring exactly one unambiguous aligned pair.
+    boxes: list[PixelBox] = []
+    for box in sorted(candidates, key=lambda item: (item[2] - item[0]) * (item[3] - item[1]), reverse=True):
+        area = (box[2] - box[0]) * (box[3] - box[1])
+        if not any(max(0, min(box[2], other[2]) - max(box[0], other[0]))
+                   * max(0, min(box[3], other[3]) - max(box[1], other[1])) >= area * 0.8 for other in boxes):
+            boxes.append(box)
+    pairs: list[tuple[PixelBox, PixelBox]] = []
+    for home in boxes:
+        for away in boxes:
+            w1, h1 = home[2] - home[0], home[3] - home[1]
+            w2, h2 = away[2] - away[0], away[3] - away[1]
+            gap = away[0] - home[2]
+            if (0.8 <= w1 / w2 <= 1.25 and 0.8 <= h1 / h2 <= 1.25
+                    and abs(home[1] - away[1]) <= max(2, h1 * 0.12)
+                    and 0.5 * w1 <= gap <= 1.8 * w1
+                    and abs(left + (home[0] + away[2]) / 2 - width / 2) <= width * 0.12):
+                emblem = yellow[max(home[1], away[1]):min(home[3], away[3]), home[2]:away[0]]
+                gap_navy = navy[max(home[1], away[1]):min(home[3], away[3]), home[2]:away[0]]
+                if emblem.size and 0.04 <= float(emblem.mean()) <= 0.6 and float(gap_navy.mean()) >= 0.45:
+                    pairs.append((home, away))
+    if len(pairs) != 1:
+        raise ValueError("Score boxes could not be located confidently")
+    sx, sy = image.width / width, image.height / height
+    mapped: list[PixelBox] = [(round((box[0] + left) * sx), round((box[1] + top) * sy),
+                              round((box[2] + left) * sx), round((box[3] + top) * sy)) for box in pairs[0]]
+    return mapped[0], mapped[1]
+
+
 def score_crops(image_bytes: bytes) -> list:
     import numpy as np
     from PIL import Image, ImageOps, ImageChops
@@ -60,15 +148,22 @@ def score_crops(image_bytes: bytes) -> list:
     if width < 640 or not 2.05 <= width / height <= 2.28:
         raise ValueError("Unsupported screenshot dimensions")
     crops = []
-    for box in SCORE_BOXES:
-        tile = image.crop(tuple(round(v * (width if i % 2 == 0 else height))
-                                for i, v in enumerate(box)))
-        pixels = np.asarray(tile)
-        yellow = (pixels[:, :, 0] > 150) & (pixels[:, :, 1] > 150) & (pixels[:, :, 2] < 120)
-        if float(yellow.mean()) < 0.55:
-            raise ValueError("Score tiles do not match template")
+    for box in find_score_boxes(image):
+        tile = image.crop(box)
         # The navy digits become black against white; padding helps single digits.
         binary = tile.convert("L").point(lambda value: 255 if value > 125 else 0)
+        # A scaled screenshot can include the tile's navy separator at either edge.
+        # Remove only nearly full-height/width edge lines; keep interior digit ink.
+        ink = np.asarray(binary).copy()
+        edge_width = max(1, round(tile.width * 0.1))
+        for column in (*range(edge_width), *range(tile.width - edge_width, tile.width)):
+            if float((ink[:, column] == 0).mean()) >= 0.8:
+                ink[:, column] = 255
+        edge_height = max(1, round(tile.height * 0.1))
+        for row in (*range(edge_height), *range(tile.height - edge_height, tile.height)):
+            if float((ink[row, :] == 0).mean()) >= 0.8:
+                ink[row, :] = 255
+        binary = Image.fromarray(ink)
         padded = ImageOps.expand(binary, border=max(4, tile.width // 8), fill=255)
         crops.append(np.asarray(padded.convert("RGB")))
     # Yellow stat digits on navy become black on white. Crop each numeric cell
