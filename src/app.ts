@@ -1,4 +1,4 @@
-import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { INestApplication, Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import "reflect-metadata";
 
@@ -47,12 +47,14 @@ export async function createApp(
     });
   } else
     app = await NestFactory.create(module, adapter, {
+      bufferLogs: options.environment.NODE_ENV !== "test",
       logger:
         options.environment.NODE_ENV === "test"
           ? false
           : ["log", "warn", "error"],
     });
   const config = app.get(ConfigurationService).values;
+  if (config.environment !== "test") app.useLogger(app.get(Logger));
   app.setGlobalPrefix("api/v1");
   app.use(helmet());
   app.use(cookieParser(config.sessionSecret));

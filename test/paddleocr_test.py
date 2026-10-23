@@ -6,6 +6,8 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch
 import os
+import struct
+import json
 
 SPEC = importlib.util.spec_from_file_location(
     "score_reader", Path(__file__).resolve().parents[1] / "ocr" / "score_reader.py"
@@ -76,6 +78,28 @@ class ScoreReaderTest(unittest.TestCase):
         self.assertEqual(result["stats"][1]["away"], 0)
         self.assertEqual(result["stats"][7]["home"], 115)
         self.assertEqual(len(result["warnings"]), 3)
+
+    def test_worker_loads_model_once_and_reports_phase_timings(self) -> None:
+        module = importlib.util.module_from_spec(SPEC)
+        SPEC.loader.exec_module(module)
+        model = Mock()
+        model.predict.return_value = [{"rec_text": "0", "rec_score": 0.99} for _ in range(28)]
+        payload = b"private-image"
+        frame = struct.pack(">I", len(payload)) + payload
+        output = io.StringIO()
+        with patch.object(module, "create_model", return_value=model) as factory, \
+             patch.object(module, "score_crops", return_value=[Mock() for _ in range(28)]):
+            module.serve_worker(io.BytesIO(frame + frame), output)
+        responses = [json.loads(line) for line in output.getvalue().splitlines()]
+        factory.assert_called_once()
+        self.assertEqual(model.predict.call_count, 2)
+        self.assertEqual(responses[0]["type"], "ready")
+        self.assertGreaterEqual(responses[0]["modelLoadMs"], 0)
+        for response in responses[1:]:
+            self.assertEqual(response["result"]["homeScore"], 0)
+            self.assertGreaterEqual(response["timings"]["prepareMs"], 0)
+            self.assertGreaterEqual(response["timings"]["inferenceMs"], 0)
+        self.assertNotIn("private-image", output.getvalue())
 
     @unittest.skipUnless(os.environ.get("PADDLEOCR_INTEGRATION") == "1", "Set PADDLEOCR_INTEGRATION=1 to run the real OCR model")
     def test_reference_image_and_scaled_copy(self) -> None:
