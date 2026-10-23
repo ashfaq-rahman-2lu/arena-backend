@@ -1,11 +1,16 @@
 import { Module } from "@nestjs/common";
 import { VisionProvider } from "./extraction.models";
 import { ExtractionService } from "./extraction.service";
-import { OpenAIVisionAdapter } from "./open-ai-vision.adapter";
+import { PaddleOcrVisionAdapter } from "./paddle-ocr-vision.adapter";
+import {
+  PaddleOcrProcessAdapter,
+  OcrProcess,
+} from "./paddle-ocr-process.adapter";
 @Module({
   providers: [
     ExtractionService,
-    { provide: VisionProvider, useClass: OpenAIVisionAdapter },
+    { provide: VisionProvider, useClass: PaddleOcrVisionAdapter },
+    { provide: OcrProcess, useClass: PaddleOcrProcessAdapter },
   ],
   exports: [ExtractionService],
 })

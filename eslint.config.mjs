@@ -98,6 +98,8 @@ export default tseslint.config(
     ignores: [
       "**/dist/**",
       "**/node_modules/**",
+      "**/.venv-ocr/**",
+      "**/.cache/**",
       "src/generated/**",
       "**/.agents/**",
       "**/playwright-report/**",

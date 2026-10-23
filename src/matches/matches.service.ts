@@ -33,6 +33,12 @@ export class MatchesService {
     image: Express.Multer.File | undefined,
   ): Promise<ExtractionSuggestion> {
     const { m, t } = await this.tournaments.ownerMatch(id, userId);
+    if (t.game !== "EFOOTBALL")
+      throw new ApplicationError(
+        "RULE_VIOLATION",
+        400,
+        "Scorecard upload is only available for eFootball tournaments.",
+      );
     const home = t.entrants.find(
         (e: (typeof t.entrants)[number]): boolean => e.id === m.homeId,
       ),

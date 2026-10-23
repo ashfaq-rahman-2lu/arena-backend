@@ -23,6 +23,7 @@ services:
       FRONTEND_URL: http://localhost:5173
       NODE_ENV: development
       HOST: 0.0.0.0
+      PADDLEOCR_PYTHON: /opt/ocr/bin/python
       COOKIE_SECURE: "false"
     ports: ["127.0.0.1:3000:3000"]
     depends_on:

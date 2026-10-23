@@ -73,6 +73,7 @@ export type CompletionResult = {
   championId: string | null;
 };
 export type TournamentViewResult = {
+  statsEnabled: boolean;
   standings: ScopeStanding[];
   qualificationPreview: QualificationPreviewResult | null;
   knockoutEligibility: KnockoutEligibilityResult | null;
@@ -127,6 +128,7 @@ export type KnockoutTie = {
   winnerId: string | null;
 };
 export type Match = {
+  stats?: import("../extraction/extraction.models").MatchStat[] | null;
   knockoutTieId?: string | null;
   id: string;
   stage: MatchStage;
@@ -154,6 +156,7 @@ export type Tie = {
   order: string[];
 };
 export type Competition = {
+  statsEnabled?: boolean;
   id: string;
   publicId: string;
   name: string;
@@ -631,6 +634,7 @@ export function tournamentView(t: Competition): TournamentViewResult {
   } catch {}
   return {
     ...t,
+    statsEnabled: t.statsEnabled ?? false,
     knockoutLegs: t.knockoutLegs ?? 1,
     knockoutFinalLegs: t.knockoutFinalLegs ?? 1,
     knockoutTies: (t.knockoutTies ?? []).map(

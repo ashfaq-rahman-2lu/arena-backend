@@ -9,6 +9,7 @@ export type MapExtractionResult = {
   awayScore: number | null;
   homeTiebreak: number | null;
   awayTiebreak: number | null;
+  stats: MatchStat[];
   warnings: string[];
 };
 export type ReadResult = {
@@ -22,72 +23,33 @@ export type ReadResult = {
   awayScore: number | null;
   homeTiebreak: number | null;
   awayTiebreak: number | null;
+  stats: MatchStat[];
   warnings: string[];
 };
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import sharp from "sharp";
 import { ApplicationError } from "../common/application-error";
 import { Entrant } from "../domain/engine";
-import { Extracted, VisionProvider } from "./extraction.models";
-export const normalize = (s: string): string =>
-  s
-    .normalize("NFKC")
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]/gu, "");
+import {
+  Extracted,
+  extracted,
+  MatchStat,
+  VisionProvider,
+} from "./extraction.models";
+// The supported scorecard template always shows home on the left, away on the right.
 export function mapExtraction(
   result: Extracted,
-  entrants: Entrant[],
+  _entrants: Entrant[],
 ): MapExtractionResult {
-  const indices = result.sides.map(
-    (side: {
-      name: string | null;
-      score: number | null;
-      tiebreak: number | null;
-    }): number[] =>
-      entrants
-        .map((e: Entrant, i: number): number =>
-          [e.name, ...e.aliases].some(
-            (n: string): boolean =>
-              normalize(n) !== "" &&
-              normalize(n) === normalize(side.name || ""),
-          )
-            ? i
-            : -1,
-        )
-        .filter((i: number): boolean => i >= 0),
-  );
-  const matched =
-    indices.every((a: number[]): boolean => a.length === 1) &&
-    indices[0][0] !== indices[1][0];
-  const ordered = matched
-    ? entrants.map(
-        (
-          _: Entrant,
-          i: number,
-        ): {
-          name: string | null;
-          score: number | null;
-          tiebreak: number | null;
-        } =>
-          result.sides[indices.findIndex((a: number[]): boolean => a[0] === i)],
-      )
-    : null;
   return {
-    matched,
+    matched: true,
     observedSides: result.sides,
-    homeScore: ordered?.[0].score ?? null,
-    awayScore: ordered?.[1].score ?? null,
-    homeTiebreak: ordered?.[0].tiebreak ?? null,
-    awayTiebreak: ordered?.[1].tiebreak ?? null,
-    warnings: [
-      ...result.warnings,
-      ...(!matched
-        ? [
-            "Team names are ambiguous or unmatched. Map the observed sides before applying scores.",
-          ]
-        : []),
-    ],
+    homeScore: result.sides[0].score,
+    awayScore: result.sides[1].score,
+    homeTiebreak: null,
+    awayTiebreak: null,
+    stats: result.stats ?? [],
+    warnings: result.warnings,
   };
 }
 @Injectable()
@@ -138,7 +100,7 @@ export class ExtractionService {
     const start = Date.now();
     try {
       const result = mapExtraction(
-        await this.provider.read(image, entrants),
+        extracted.parse(await this.provider.read(image, entrants)),
         entrants,
       );
       this.log.log(

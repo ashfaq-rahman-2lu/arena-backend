@@ -9,3 +9,8 @@ node_modules
 coverage
 *.log
 *.tsbuildinfo
+
+# Local PaddleOCR environment and model caches
+.venv-ocr/
+.cache/
+__pycache__/

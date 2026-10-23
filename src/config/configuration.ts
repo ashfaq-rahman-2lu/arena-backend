@@ -13,8 +13,7 @@ export interface GoogleConfiguration {
   callbackUrl: string;
 }
 export interface VisionConfiguration {
-  apiKey: string;
-  model: string;
+  python: string;
 }
 export interface ApplicationConfiguration {
   databaseUrl: string;
@@ -29,7 +28,7 @@ export interface ApplicationConfiguration {
   extractionRateLimit: number;
   smtp: SmtpConfiguration | null;
   google: GoogleConfiguration | null;
-  vision: VisionConfiguration | null;
+  vision: VisionConfiguration;
 }
 const bool = z
   .enum(["true", "false"])
@@ -71,8 +70,7 @@ const schema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-  OPENAI_VISION_MODEL: z.string().min(1).default("gpt-4.1-mini"),
+  PADDLEOCR_PYTHON: z.string().min(1).default("python3"),
 });
 export function validateConfiguration(
   env: Record<string, unknown>,
@@ -132,9 +130,7 @@ export function validateConfiguration(
             callbackUrl: value.GOOGLE_CALLBACK_URL,
           }
         : null,
-    vision: value.OPENAI_API_KEY
-      ? { apiKey: value.OPENAI_API_KEY, model: value.OPENAI_VISION_MODEL }
-      : null,
+    vision: { python: value.PADDLEOCR_PYTHON },
   };
 }
 export const offlineEnvironment: Record<string, string> = {

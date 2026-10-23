@@ -11,7 +11,17 @@ import {
   matchStages,
   competitionStages,
 } from "../domain/competition-values";
-import { ApiExtraModels, ApiProperty, getSchemaPath } from "@nestjs/swagger";
+import {
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
+  getSchemaPath,
+} from "@nestjs/swagger";
+import {
+  ArchiveStatsPreviewView,
+  StatUsageView,
+} from "../stats/team-stats.dto";
+import { MatchStatInput } from "../matches/result-request.dto";
 export class Entrant {
   @ApiProperty({ type: String }) id!: string;
   @ApiProperty({ type: String }) name!: string;
@@ -24,6 +34,8 @@ export class Group {
   @ApiProperty({ type: Number }) qualifierCount!: number;
 }
 export class Match {
+  @ApiPropertyOptional({ type: [MatchStatInput], nullable: true })
+  stats?: import("../extraction/extraction.models").MatchStat[] | null;
   @ApiProperty({ type: String, nullable: true }) knockoutTieId?: string | null;
   @ApiProperty({ type: String }) id!: string;
   @ApiProperty({ type: String, enum: matchStages }) stage!: MatchStage;
@@ -127,6 +139,7 @@ export class DrawPreview {
 }
 @ApiExtraModels(Qualification, QualificationPreview, Eligibility)
 export class TournamentView {
+  @ApiProperty({ type: Boolean }) statsEnabled!: boolean;
   @ApiProperty({ type: String }) id!: string;
   @ApiProperty({ type: String }) publicId!: string;
   @ApiProperty({ type: String }) name!: string;
@@ -182,7 +195,10 @@ export class Fixture {
 }
 export class HistoryEntry {
   @ApiProperty({ type: String }) id!: string;
-  @ApiProperty({ type: String, enum: ["RESET", "CLEAR", "SCORE"] })
+  @ApiProperty({
+    type: String,
+    enum: ["RESET", "CLEAR", "SCORE", "STATS_ARCHIVE"],
+  })
   action!: AuditAction;
   @ApiProperty({ type: String, nullable: true }) matchId!: string | null;
   @ApiProperty({ type: String }) createdAt!: string;
@@ -192,6 +208,7 @@ export class HistoryEntry {
   after!: unknown;
 }
 export class TournamentSummary {
+  @ApiProperty({ type: Boolean }) statsEnabled!: boolean;
   @ApiProperty({ type: String }) id!: string;
   @ApiProperty({ type: String }) publicId!: string;
   @ApiProperty({ type: String }) name!: string;

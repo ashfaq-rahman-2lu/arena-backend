@@ -1,5 +1,5 @@
-import { Logger } from "@nestjs/common";
-import { OpenAIVisionAdapter } from "../src/extraction/open-ai-vision.adapter";
+import { PaddleOcrVisionAdapter } from "../src/extraction/paddle-ocr-vision.adapter";
+import { OcrProcess } from "../src/extraction/paddle-ocr-process.adapter";
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import assert from "node:assert/strict";
@@ -69,54 +69,33 @@ for (const scenario of ["malformed token", "unverified identity", "timeout"])
   });
 
 for (const scenario of ["timeout", "malformed envelope", "malformed score"])
-  test(`vision adapter safely rejects ${scenario} through injected transport`, async (): Promise<void> => {
-    const transport: HttpTransport = {
-      send: async (_url: string, options: RequestInit): Promise<Response> => {
-        assert(options.signal instanceof AbortSignal);
-        if (scenario === "timeout")
-          throw new DOMException("provider secret", "TimeoutError");
-        return new Response(
-          JSON.stringify(
-            scenario === "malformed envelope"
-              ? { output: "provider secret" }
-              : {
-                  output: [
-                    {
-                      content: [
-                        {
-                          type: "output_text",
-                          text: JSON.stringify({
-                            sides: [{ name: null, score: -1, tiebreak: null }],
-                            warnings: [],
-                          }),
-                        },
-                      ],
-                    },
-                  ],
-                },
-          ),
-        );
+  test(`PaddleOCR adapter safely rejects ${scenario} through injected process`, async (): Promise<void> => {
+    const process: OcrProcess = {
+      run: async (_python: string, _image: Buffer): Promise<string> => {
+        if (scenario === "timeout") throw new Error("provider secret");
+        return scenario === "malformed envelope"
+          ? "not json"
+          : JSON.stringify({
+              homeScore: -1,
+              awayScore: 2,
+              stats: [],
+              warnings: [],
+            });
       },
     };
     const config = new ConfigurationService(
-      new ConfigService({
-        arena: validateConfiguration({
-          ...offlineEnvironment,
-          OPENAI_API_KEY: "test-only",
-        }),
-      }),
+      new ConfigService({ arena: validateConfiguration(offlineEnvironment) }),
     );
     const module = await Test.createTestingModule({
       providers: [
-        OpenAIVisionAdapter,
+        PaddleOcrVisionAdapter,
         { provide: ConfigurationService, useValue: config },
-        { provide: HttpTransport, useValue: transport },
-        { provide: Logger, useValue: new Logger() },
+        { provide: OcrProcess, useValue: process },
       ],
     }).compile();
     try {
       await assert.rejects(
-        module.get(OpenAIVisionAdapter).read(Buffer.from("test"), []),
+        module.get(PaddleOcrVisionAdapter).read(Buffer.from("test"), []),
         (error: unknown): boolean =>
           error instanceof ApplicationError &&
           error.code === "INTEGRATION_UNAVAILABLE" &&
@@ -126,3 +105,89 @@ for (const scenario of ["timeout", "malformed envelope", "malformed score"])
       await module.close();
     }
   });
+test("PaddleOCR returns positional scores with no name matching or HTTP request", async (): Promise<void> => {
+  const config = new ConfigurationService(
+    new ConfigService({
+      arena: validateConfiguration({
+        ...offlineEnvironment,
+        PADDLEOCR_PYTHON: "/opt/ocr/bin/python",
+      }),
+    }),
+  );
+  const process: OcrProcess = {
+    run: async (python: string, image: Buffer): Promise<string> => {
+      assert.equal(python, "/opt/ocr/bin/python");
+      assert.equal(image.toString(), "image");
+      return JSON.stringify({
+        homeScore: 1,
+        awayScore: 2,
+        warnings: [],
+        stats: [
+          {
+            key: "possession",
+            label: "Possession",
+            home: 55,
+            away: 45,
+            unit: "percent",
+          },
+          {
+            key: "passes",
+            label: "Passes",
+            home: 115,
+            away: null,
+            unit: "count",
+          },
+        ],
+      });
+    },
+  };
+  const result = await new PaddleOcrVisionAdapter(config, process).read(
+    Buffer.from("image"),
+    [],
+  );
+  assert.deepEqual(Reflect.get(result, "stats"), [
+    {
+      key: "possession",
+      label: "Possession",
+      home: 55,
+      away: 45,
+      unit: "percent",
+    },
+    { key: "passes", label: "Passes", home: 115, away: null, unit: "count" },
+  ]);
+  assert.deepEqual(result.sides, [
+    { name: null, score: 1, tiebreak: null },
+    { name: null, score: 2, tiebreak: null },
+  ]);
+});
+
+for (const stats of [
+  [
+    {
+      key: "possession",
+      label: "Possession",
+      home: 101,
+      away: 45,
+      unit: "percent",
+    },
+  ],
+  [{ key: "passes", label: "Passes", home: -1, away: 79, unit: "count" }],
+  [{ key: "passes", label: "Passes", home: 115, away: 79, unit: "percent" }],
+]) {
+  test(`rejects invalid stat payload ${JSON.stringify(stats)}`, async (): Promise<void> => {
+    const config = new ConfigurationService(
+      new ConfigService({ arena: validateConfiguration(offlineEnvironment) }),
+    );
+    const process: OcrProcess = {
+      run: async (_python: string, _image: Buffer): Promise<string> =>
+        JSON.stringify({ homeScore: 1, awayScore: 2, stats, warnings: [] }),
+    };
+    await assert.rejects(
+      new PaddleOcrVisionAdapter(config, process).read(
+        Buffer.from("image"),
+        [],
+      ),
+      ApplicationError,
+    );
+  });
+}
