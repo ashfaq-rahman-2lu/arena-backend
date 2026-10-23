@@ -10,6 +10,6 @@ import { TournamentsService } from "./tournaments.service";
     TournamentsRepository,
     { provide: TournamentMutationsPort, useExisting: TournamentsService },
   ],
-  exports: [TournamentMutationsPort, TournamentsRepository],
+  exports: [TournamentMutationsPort, TournamentsRepository, TournamentsService],
 })
 export class TournamentsModule {}

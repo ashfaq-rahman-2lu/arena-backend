@@ -1,3 +1,4 @@
+import { TournamentStatSource } from "../stats/team-stats.models";
 import {
   auditActions,
   games,
@@ -20,6 +21,7 @@ import {
 } from "./tournament-response.dto";
 import { TournamentAggregate } from "./tournament.models";
 import { text } from "express";
+import { MatchStat, matchStats } from "../extraction/extraction.models";
 const include = {
   entrants: { orderBy: [{ name: "asc" }, { id: "asc" }] },
   groups: { orderBy: [{ name: "asc" }, { id: "asc" }] },
@@ -63,6 +65,7 @@ function storedValue<T extends string>(
 function mapAggregate(t: TournamentRecord): TournamentAggregate {
   return {
     id: t.id,
+    statsEnabled: t.statsEnabled,
     publicId: t.publicId,
     ownerId: t.ownerId,
     name: t.name,
@@ -129,6 +132,7 @@ function mapAggregate(t: TournamentRecord): TournamentAggregate {
         homeTiebreak: m.homeTiebreak,
         awayTiebreak: m.awayTiebreak,
         winnerId: m.winnerId,
+        stats: m.stats === null ? null : matchStats.parse(m.stats),
         revision: m.revision,
       }),
     ),
@@ -195,6 +199,8 @@ const auditKeys = new Set([
   "roundIds",
   "matchIds",
   "resetQualification",
+  "statsMatchCount",
+  "statsDeleted",
 ]);
 export function auditPayload(value: Prisma.JsonValue): Prisma.JsonValue {
   if (Array.isArray(value))
@@ -224,6 +230,46 @@ export class TournamentsRepository {
     if (!t)
       throw new ApplicationError("NOT_FOUND", 404, "Tournament not found");
     return mapAggregate(t);
+  }
+  async publicStatSource(publicId: string): Promise<TournamentStatSource> {
+    const tournament = await this.db.tournament.findUnique({
+      where: { publicId: publicId.trim().toUpperCase() },
+      select: {
+        statsEnabled: true,
+        entrants: {
+          select: { id: true, name: true },
+          orderBy: [{ name: "asc" }, { id: "asc" }],
+        },
+        matches: {
+          where: { homeScore: { not: null }, awayScore: { not: null } },
+          select: {
+            homeId: true,
+            awayId: true,
+            homeScore: true,
+            awayScore: true,
+            stats: true,
+          },
+        },
+      },
+    });
+    if (!tournament)
+      throw new ApplicationError(
+        "NOT_FOUND",
+        404,
+        "No tournament found with that ID",
+      );
+    return {
+      statsEnabled: tournament.statsEnabled,
+      entrants: tournament.entrants,
+      matches: tournament.matches.map(
+        (
+          match: (typeof tournament.matches)[number],
+        ): TournamentStatSource["matches"][number] => ({
+          ...match,
+          stats: match.stats === null ? null : matchStats.parse(match.stats),
+        }),
+      ),
+    };
   }
   async publicView(publicId: string): Promise<TournamentAggregate> {
     const t = await this.db.tournament.findUnique({
@@ -308,6 +354,7 @@ export class TournamentsRepository {
             createdAt: true,
             legs: true,
             revision: true,
+            statsEnabled: true,
             entrants: {
               take: 4,
               orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -351,6 +398,7 @@ export class TournamentsRepository {
         status: storedValue(item.status, statuses),
         legs: item.legs,
         revision: item.revision,
+        statsEnabled: item.statsEnabled,
         createdAt: item.createdAt.toISOString(),
         entrantCount: item._count.entrants,
         entrantPreview: item.entrants,
@@ -471,6 +519,101 @@ export class TournamentsRepository {
 
   async lockTournament(tx: TransactionClient, id: string): Promise<void> {
     await tx.$queryRaw`SELECT id FROM "Tournament" WHERE id = ${id} FOR UPDATE`;
+  }
+  async lockOwnerStats(tx: TransactionClient, ownerId: string): Promise<void> {
+    await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${ownerId}))`;
+  }
+  async statSlots(
+    ownerId: string,
+  ): Promise<{ slot: number; tournamentId: string }[]> {
+    return this.db.tournamentStatSlot.findMany({
+      where: { ownerId },
+      orderBy: { slot: "asc" },
+      select: { slot: true, tournamentId: true },
+    });
+  }
+  async statMatchCount(
+    tournamentId: string,
+    tx: TransactionClient = this.db,
+  ): Promise<number> {
+    const rows: { count: bigint }[] = await tx.$queryRaw`
+      SELECT COUNT(*)::bigint AS count FROM "Match"
+      WHERE "tournamentId" = ${tournamentId} AND "stats" IS NOT NULL
+    `;
+    return Number(rows[0]?.count ?? 0n);
+  }
+  async allocateStatSlot(
+    tx: TransactionClient,
+    ownerId: string,
+    tournamentId: string,
+  ): Promise<void> {
+    const existing = await tx.tournamentStatSlot.findUnique({
+      where: { tournamentId },
+    });
+    if (existing) return;
+    await this.lockOwnerStats(tx, ownerId);
+    const afterLock = await tx.tournamentStatSlot.findUnique({
+      where: { tournamentId },
+    });
+    if (afterLock) return;
+    const occupied: { slot: number }[] = await tx.tournamentStatSlot.findMany({
+      where: { ownerId },
+      select: { slot: true },
+    });
+    const slot = [1, 2, 3].find(
+      (candidate: number): boolean =>
+        !occupied.some(
+          (record: { slot: number }): boolean => record.slot === candidate,
+        ),
+    );
+    if (slot === undefined)
+      throw new ApplicationError(
+        "STATS_LIMIT_REACHED",
+        409,
+        "Stats are enabled for three tournaments. Archive stats for one tournament to free a slot.",
+      );
+    await tx.tournamentStatSlot.create({
+      data: { ownerId, tournamentId, slot },
+    });
+    await tx.tournament.update({
+      where: { id: tournamentId },
+      data: { statsEnabled: true },
+    });
+  }
+  async archiveTournamentStats(
+    tx: TransactionClient,
+    tournamentId: string,
+  ): Promise<void> {
+    await tx.match.updateMany({
+      where: { tournamentId, stats: { not: Prisma.DbNull } },
+      data: { stats: Prisma.DbNull },
+    });
+    await tx.tournamentStatSlot.deleteMany({ where: { tournamentId } });
+    await tx.tournament.update({
+      where: { id: tournamentId },
+      data: { statsEnabled: false },
+    });
+  }
+  async saveMatchStats(
+    tx: TransactionClient,
+    matchId: string,
+    stats: MatchStat[] | null,
+  ): Promise<void> {
+    await tx.match.update({
+      where: { id: matchId },
+      data: {
+        stats:
+          stats === null
+            ? Prisma.DbNull
+            : stats.map((stat: MatchStat): Prisma.InputJsonObject => ({
+                key: stat.key,
+                label: stat.label,
+                home: stat.home,
+                away: stat.away,
+                unit: stat.unit,
+              })),
+      },
+    });
   }
   isPublicIdCollision(error: unknown): boolean {
     return (

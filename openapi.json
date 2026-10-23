@@ -1167,6 +1167,115 @@
         ]
       }
     },
+    "/api/v1/tournaments/stats/usage": {
+      "get": {
+        "operationId": "TournamentsController_statUsage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatUsageView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
     "/api/v1/tournaments": {
       "get": {
         "operationId": "TournamentsController_list",
@@ -1571,6 +1680,380 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/TournamentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
+    "/api/v1/tournaments/{id}/stats/enable": {
+      "post": {
+        "operationId": "TournamentsController_enableStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
+    "/api/v1/tournaments/{id}/stats/archive-preview": {
+      "post": {
+        "operationId": "TournamentsController_archiveStatsPreview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveStatsPreviewView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "tournaments"
+        ]
+      }
+    },
+    "/api/v1/tournaments/{id}/stats/archive": {
+      "post": {
+        "operationId": "TournamentsController_archiveStats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveStatsInput"
               }
             }
           }
@@ -3523,6 +4006,116 @@
         ]
       }
     },
+    "/api/v1/public/tournaments/{publicId}/stats": {
+      "get": {
+        "operationId": "PublicViewingController_stats",
+        "parameters": [
+          {
+            "name": "publicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamStatsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/v1/public/tournaments/{publicId}": {
       "get": {
         "operationId": "PublicViewingController_view",
@@ -3933,6 +4526,28 @@
           "password"
         ]
       },
+      "StatUsageView": {
+        "type": "object",
+        "properties": {
+          "used": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "tournamentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "used",
+          "limit",
+          "tournamentIds"
+        ]
+      },
       "Entrant": {
         "type": "object",
         "properties": {
@@ -3963,6 +4578,9 @@
       "TournamentSummary": {
         "type": "object",
         "properties": {
+          "statsEnabled": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
@@ -4021,6 +4639,7 @@
           }
         },
         "required": [
+          "statsEnabled",
           "id",
           "publicId",
           "name",
@@ -4137,6 +4756,10 @@
       "TournamentSetup": {
         "type": "object",
         "properties": {
+          "statsEnabled": {
+            "type": "boolean",
+            "default": false
+          },
           "name": {
             "type": "string"
           },
@@ -4367,9 +4990,63 @@
           "qualifierCount"
         ]
       },
+      "MatchStatInput": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "possession",
+              "shots",
+              "shotsOnTarget",
+              "fouls",
+              "offsides",
+              "cornerKicks",
+              "freeKicks",
+              "passes",
+              "successfulPasses",
+              "crosses",
+              "interceptions",
+              "tackles",
+              "saves"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "home": {
+            "type": "number",
+            "nullable": true
+          },
+          "away": {
+            "type": "number",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "count"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit"
+        ]
+      },
       "Match": {
         "type": "object",
         "properties": {
+          "stats": {
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchStatInput"
+            }
+          },
           "knockoutTieId": {
             "type": "string",
             "nullable": true
@@ -4590,6 +5267,9 @@
       "TournamentView": {
         "type": "object",
         "properties": {
+          "statsEnabled": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
@@ -4742,6 +5422,7 @@
           }
         },
         "required": [
+          "statsEnabled",
           "id",
           "publicId",
           "name",
@@ -4772,6 +5453,10 @@
       "TournamentUpdate": {
         "type": "object",
         "properties": {
+          "statsEnabled": {
+            "type": "boolean",
+            "default": false
+          },
           "name": {
             "type": "string"
           },
@@ -4852,6 +5537,47 @@
           "entrants",
           "groups",
           "expectedRevision"
+        ]
+      },
+      "RevisionInput": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "expectedRevision"
+        ]
+      },
+      "ArchiveStatsPreviewView": {
+        "type": "object",
+        "properties": {
+          "tournamentRevision": {
+            "type": "number"
+          },
+          "statsMatchCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "tournamentRevision",
+          "statsMatchCount"
+        ]
+      },
+      "ArchiveStatsInput": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "number"
+          },
+          "statsMatchCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "statsMatchCount"
         ]
       },
       "TournamentNameUpdate": {
@@ -5064,17 +5790,6 @@
           "limit"
         ]
       },
-      "RevisionInput": {
-        "type": "object",
-        "properties": {
-          "expectedRevision": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "expectedRevision"
-        ]
-      },
       "EntrantUpdate": {
         "type": "object",
         "properties": {
@@ -5204,7 +5919,8 @@
             "enum": [
               "RESET",
               "CLEAR",
-              "SCORE"
+              "SCORE",
+              "STATS_ARCHIVE"
             ]
           },
           "matchId": {
@@ -5282,6 +5998,14 @@
         "properties": {
           "expectedRevision": {
             "type": "number"
+          },
+          "stats": {
+            "maxItems": 13,
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchStatInput"
+            }
           },
           "knockoutDecision": {
             "$ref": "#/components/schemas/KnockoutDecision"
@@ -5490,6 +6214,82 @@
           "homeTiebreak",
           "awayTiebreak",
           "warnings"
+        ]
+      },
+      "TeamStatValueView": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "count"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "nullable": true
+          },
+          "recordedMatches": {
+            "type": "number"
+          },
+          "playedMatches": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "value",
+          "recordedMatches",
+          "playedMatches"
+        ]
+      },
+      "TeamStatsRow": {
+        "type": "object",
+        "properties": {
+          "entrantId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamStatValueView"
+            }
+          }
+        },
+        "required": [
+          "entrantId",
+          "name",
+          "stats"
+        ]
+      },
+      "TeamStatsView": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamStatsRow"
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "teams"
         ]
       },
       "HealthView": {

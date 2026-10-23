@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { resultSnapshot } from "./result-audit.models";
+import { ZodError } from "zod";
 import { createHmac, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { ApplicationError } from "../common/application-error";
 import { PageQuery, TournamentListQuery } from "../common/pagination.dto";
@@ -25,6 +27,12 @@ import {
   validateScore,
 } from "../domain/engine";
 import { ResultInput } from "../matches/result-request.dto";
+import { MatchStat, matchStats } from "../extraction/extraction.models";
+import {
+  StatMatchRecord,
+  aggregateTeamStats,
+} from "../stats/team-stats.models";
+import { TeamStatsView } from "../stats/team-stats.dto";
 import {
   EntrantSetup,
   EntrantsAddition,
@@ -47,6 +55,10 @@ import {
   TournamentPage,
   TournamentView,
 } from "./tournament-response.dto";
+import {
+  ArchiveStatsPreviewView,
+  StatUsageView,
+} from "../stats/team-stats.dto";
 import { TournamentAggregate } from "./tournament.models";
 import {
   TournamentsRepository,
@@ -85,6 +97,102 @@ export class TournamentsService {
     await this.owned(id, userId);
     return this.repository.history(id, query);
   }
+  async statUsage(userId: string): Promise<StatUsageView> {
+    const slots = await this.repository.statSlots(userId);
+    return {
+      used: slots.length,
+      limit: 3,
+      tournamentIds: slots.map(
+        (item: { slot: number; tournamentId: string }): string =>
+          item.tournamentId,
+      ),
+    };
+  }
+  async enableStats(
+    id: string,
+    userId: string,
+    expectedRevision: number,
+  ): Promise<TournamentView> {
+    const initial = await this.owned(id, userId);
+    await this.repository.transaction(async (tx: Tx): Promise<void> => {
+      await this.repository.lockTournament(tx, id);
+      await this.repository.lockOwnerStats(tx, initial.ownerId);
+      const tournament = await this.owned(id, userId, tx);
+      if (tournament.revision !== expectedRevision)
+        throw new ApplicationError(
+          "REVISION_CONFLICT",
+          409,
+          "Tournament changed. Refresh and try again.",
+        );
+      invariant(
+        tournament.game === "EFOOTBALL",
+        "Match stats are only available for eFootball tournaments",
+      );
+      if (tournament.statsEnabled) return;
+      await this.repository.allocateStatSlot(tx, userId, id);
+      await this.repository.tournamentUpdate(tx, {
+        where: { id },
+        data: { revision: { increment: 1 } },
+      });
+    });
+    return this.view(await this.load(id));
+  }
+  async archiveStatsPreview(
+    id: string,
+    userId: string,
+  ): Promise<ArchiveStatsPreviewView> {
+    const tournament = await this.owned(id, userId);
+    return {
+      tournamentRevision: tournament.revision,
+      statsMatchCount: await this.repository.statMatchCount(id),
+    };
+  }
+  async archiveStats(
+    id: string,
+    userId: string,
+    expectedRevision: number,
+    statsMatchCount: number,
+  ): Promise<TournamentView> {
+    const initial = await this.owned(id, userId);
+    await this.repository.transaction(async (tx: Tx): Promise<void> => {
+      await this.repository.lockTournament(tx, id);
+      await this.repository.lockOwnerStats(tx, initial.ownerId);
+      const tournament = await this.owned(id, userId, tx);
+      if (tournament.revision !== expectedRevision)
+        throw new ApplicationError(
+          "REVISION_CONFLICT",
+          409,
+          "Tournament changed. Refresh and preview archiving again.",
+        );
+      invariant(
+        tournament.statsEnabled,
+        "Match stats are not enabled for this tournament",
+      );
+      const currentCount = await this.repository.statMatchCount(id, tx);
+      if (currentCount !== statsMatchCount)
+        throw new ApplicationError(
+          "REVISION_CONFLICT",
+          409,
+          "Match stats changed. Preview archiving again.",
+        );
+      await this.repository.resultRevisionCreate(tx, {
+        data: {
+          tournamentId: id,
+          matchId: null,
+          actorId: userId,
+          action: "STATS_ARCHIVE",
+          before: { statsMatchCount: currentCount },
+          after: { statsDeleted: true },
+        },
+      });
+      await this.repository.archiveTournamentStats(tx, id);
+      await this.repository.tournamentUpdate(tx, {
+        where: { id },
+        data: { revision: { increment: 1 } },
+      });
+    });
+    return this.view(await this.load(id));
+  }
   load(id: string, client?: Tx): Promise<TournamentAggregate> {
     return this.repository.load(id, client);
   }
@@ -107,8 +215,59 @@ export class TournamentsService {
     return tournamentView(clean);
   }
   async publicView(code: string): Promise<TournamentView> {
-    return this.view(await this.repository.publicView(code));
+    const tournament = await this.repository.publicView(code);
+    return this.view({
+      ...tournament,
+      matches: tournament.matches.map((match: Match): Match => ({
+        ...match,
+        stats: null,
+      })),
+    });
   }
+  async publicStats(code: string): Promise<TeamStatsView> {
+    const tournament = await this.repository.publicStatSource(code);
+    if (!tournament.statsEnabled) return { enabled: false, teams: [] };
+    const playedByTeam = new Map<string, StatMatchRecord[]>();
+    for (const match of tournament.matches) {
+      for (const id of [match.homeId, match.awayId]) {
+        const matches = playedByTeam.get(id) ?? [];
+        matches.push(match);
+        playedByTeam.set(id, matches);
+      }
+    }
+    return {
+      enabled: true,
+      teams: tournament.entrants.map(
+        (entrant: {
+          id: string;
+          name: string;
+        }): TeamStatsView["teams"][number] => {
+          const played = playedByTeam.get(entrant.id) ?? [];
+          return {
+            entrantId: entrant.id,
+            name: entrant.name,
+            stats: aggregateTeamStats(
+              played.flatMap(
+                (
+                  match: StatMatchRecord,
+                ): import("../stats/team-stats.models").TeamStatMatch[] =>
+                  match.stats
+                    ? [
+                        {
+                          stats: match.stats,
+                          side: match.homeId === entrant.id ? "home" : "away",
+                        },
+                      ]
+                    : [],
+              ),
+              played.length,
+            ),
+          };
+        },
+      ),
+    };
+  }
+
   list(userId: string, query: TournamentListQuery): Promise<TournamentPage> {
     return this.repository.list(userId, query);
   }
@@ -127,6 +286,10 @@ export class TournamentsService {
     return paginate(fixtures, query.page, query.limit);
   }
   validateSetup(input: SetupInput): void {
+    invariant(
+      !input.statsEnabled || input.game === "EFOOTBALL",
+      "Match stats are only available for eFootball tournaments",
+    );
     invariant(
       input.knockoutFinalLegs <= input.knockoutLegs,
       "Final legs cannot exceed knockout legs",
@@ -226,9 +389,12 @@ export class TournamentsService {
                 name: input.name,
                 game: input.game,
                 format: input.format,
+                statsEnabled: false,
               },
             });
             await this.replaceSetup(tx, t.id, input);
+            if (input.statsEnabled === true)
+              await this.repository.allocateStatSlot(tx, userId, t.id);
             return t.id;
           },
         );
@@ -286,12 +452,18 @@ export class TournamentsService {
           t.status === "DRAFT",
           "Tournament settings are locked after starting",
         );
+        invariant(
+          !t.statsEnabled || input.game === "EFOOTBALL",
+          "Archive match stats before changing to another game",
+        );
         await this.replaceSetup(
           tx,
           id,
           input,
           t.entrants.map((e: Entrant): string => e.id),
         );
+        if (input.statsEnabled === true && !t.statsEnabled)
+          await this.repository.allocateStatSlot(tx, userId, id);
       },
     );
   }
@@ -842,6 +1014,35 @@ export class TournamentsService {
       .update(JSON.stringify([t.id, t.revision, m.id, m.revision, score, tie]))
       .digest("hex");
   }
+  private validateStats(t: TournamentAggregate, input: ResultInput): void {
+    if (input.stats === undefined || input.homeScore === null) return;
+    if (!t.statsEnabled || t.game !== "EFOOTBALL")
+      throw new ApplicationError(
+        "RULE_VIOLATION",
+        400,
+        "Enable eFootball stats before saving match stats.",
+      );
+    if (input.stats === null) return;
+    try {
+      matchStats.parse(
+        input.stats.map(
+          (stat: NonNullable<ResultInput["stats"]>[number]): MatchStat => ({
+            ...stat,
+            home: stat.home ?? null,
+            away: stat.away ?? null,
+          }),
+        ),
+      );
+    } catch (error: unknown) {
+      if (error instanceof ZodError)
+        throw new ApplicationError(
+          "VALIDATION_FAILED",
+          400,
+          "Match stats contain invalid values.",
+        );
+      throw error;
+    }
+  }
   async previewResult(
     matchId: string,
     userId: string,
@@ -857,6 +1058,7 @@ export class TournamentsService {
         409,
         "Match or tournament changed; refresh",
       );
+    this.validateStats(t, input);
     const { score, tie } = this.prepareResult(t, m, input);
     return {
       ...correctionImpact(t, m, score, tie),
@@ -884,6 +1086,7 @@ export class TournamentsService {
             409,
             "Match changed; refresh",
           );
+        this.validateStats(t, input);
         invariant(t.status !== "DRAFT", "Start the tournament first");
         const { score, tie } = this.prepareResult(t, current, input),
           impact = correctionImpact(t, current, score, tie);
@@ -899,14 +1102,17 @@ export class TournamentsService {
           );
         if (impact.requiresReset) {
           const before = {
-            rounds: t.rounds.filter((r: Round): boolean =>
-              impact.roundIds.includes(r.id),
+            rounds: t.rounds.filter((round: Round): boolean =>
+              impact.roundIds.includes(round.id),
             ),
-            matches: t.matches.filter((x: Match): boolean =>
-              impact.matchIds.includes(x.id),
-            ),
+            matches: t.matches
+              .filter((match: Match): boolean =>
+                impact.matchIds.includes(match.id),
+              )
+              .map(resultSnapshot),
             knockoutTies: (t.knockoutTies ?? []).filter(
-              (x: KnockoutTie): boolean => impact.roundIds.includes(x.roundId),
+              (tie: KnockoutTie): boolean =>
+                impact.roundIds.includes(tie.roundId),
             ),
             qualification: impact.resetQualification ? t.qualification : null,
           };
@@ -940,10 +1146,11 @@ export class TournamentsService {
             actorId: userId,
             action: score.homeScore === null ? "CLEAR" : "SCORE",
             before: {
-              ...current,
+              ...resultSnapshot(current),
               knockoutTie:
                 (t.knockoutTies ?? []).find(
-                  (x: KnockoutTie): boolean => x.id === current.knockoutTieId,
+                  (candidate: KnockoutTie): boolean =>
+                    candidate.id === current.knockoutTieId,
                 ) ?? null,
             },
             after: { ...score, knockoutTie: tie ?? null },
@@ -953,6 +1160,25 @@ export class TournamentsService {
           where: { id: matchId },
           data: { ...score, revision: { increment: 1 } },
         });
+        if (score.homeScore === null) {
+          await this.repository.saveMatchStats(tx, matchId, null);
+        } else if (input.stats !== undefined) {
+          const validatedStats =
+            input.stats === null
+              ? null
+              : matchStats.parse(
+                  input.stats.map(
+                    (
+                      stat: NonNullable<ResultInput["stats"]>[number],
+                    ): MatchStat => ({
+                      ...stat,
+                      home: stat.home ?? null,
+                      away: stat.away ?? null,
+                    }),
+                  ),
+                );
+          await this.repository.saveMatchStats(tx, matchId, validatedStats);
+        }
         if (tie)
           await this.repository.tieUpdate(tx, tie.id, {
             winnerId: tie.winnerId,

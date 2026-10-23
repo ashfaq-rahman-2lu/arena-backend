@@ -1,19 +1,20 @@
 import { Injectable } from "@nestjs/common";
 import { PublicViewingRepository } from "./public-viewing.repository";
-import { tournamentView } from "../domain/engine";
 import { TournamentView } from "../tournaments/tournament-response.dto";
-import { TournamentsRepository } from "../tournaments/tournaments.repository";
+import { TournamentsService } from "../tournaments/tournaments.service";
+import { TeamStatsView } from "../stats/team-stats.dto";
 import { HealthView } from "./health-response.dto";
 @Injectable()
 export class PublicViewingService {
   constructor(
-    private readonly tournaments: TournamentsRepository,
+    private readonly tournaments: TournamentsService,
     private readonly repository: PublicViewingRepository,
   ) {}
   async view(publicId: string): Promise<TournamentView> {
-    const { ownerId, ...competition } =
-      await this.tournaments.publicView(publicId);
-    return tournamentView(competition);
+    return this.tournaments.publicView(publicId);
+  }
+  stats(publicId: string): Promise<TeamStatsView> {
+    return this.tournaments.publicStats(publicId);
   }
   async health(): Promise<HealthView> {
     await this.repository.checkDatabase();

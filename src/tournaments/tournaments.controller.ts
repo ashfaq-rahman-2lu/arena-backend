@@ -1,5 +1,6 @@
 import {
   Body,
+  HttpCode,
   Controller,
   Get,
   Param,
@@ -25,6 +26,7 @@ import {
   DrawInput,
   PairingInput,
   RevisionInput,
+  ArchiveStatsInput,
   TieInput,
   TournamentSetup,
   TournamentUpdate,
@@ -37,6 +39,10 @@ import {
   TournamentPage,
   TournamentView,
 } from "./tournament-response.dto";
+import {
+  ArchiveStatsPreviewView,
+  StatUsageView,
+} from "../stats/team-stats.dto";
 import { TournamentsService } from "./tournaments.service";
 @ApiTags("tournaments")
 @ApiCookieAuth()
@@ -44,6 +50,11 @@ import { TournamentsService } from "./tournaments.service";
 @Controller("tournaments")
 export class TournamentsController {
   constructor(private readonly tournaments: TournamentsService) {}
+  @Get("stats/usage")
+  @ApiOkResponse({ type: StatUsageView })
+  statUsage(@Req() req: AuthedRequest): Promise<StatUsageView> {
+    return this.tournaments.statUsage(actor(req));
+  }
   @Get()
   @ApiOkResponse({ type: TournamentPage })
   list(
@@ -85,6 +96,40 @@ export class TournamentsController {
     body: TournamentUpdate,
   ): Promise<TournamentView> {
     return this.tournaments.update(id, actor(req), body);
+  }
+  @Post(":id/stats/enable")
+  @HttpCode(200)
+  @ApiOkResponse({ type: TournamentView })
+  enableStats(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: RevisionInput,
+  ): Promise<TournamentView> {
+    return this.tournaments.enableStats(id, actor(req), body.expectedRevision);
+  }
+  @Post(":id/stats/archive-preview")
+  @HttpCode(200)
+  @ApiOkResponse({ type: ArchiveStatsPreviewView })
+  archiveStatsPreview(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+  ): Promise<ArchiveStatsPreviewView> {
+    return this.tournaments.archiveStatsPreview(id, actor(req));
+  }
+  @Post(":id/stats/archive")
+  @HttpCode(200)
+  @ApiOkResponse({ type: TournamentView })
+  archiveStats(
+    @Req() req: AuthedRequest,
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: ArchiveStatsInput,
+  ): Promise<TournamentView> {
+    return this.tournaments.archiveStats(
+      id,
+      actor(req),
+      body.expectedRevision,
+      body.statsMatchCount,
+    );
   }
   @Patch(":id/name")
   @ApiOkResponse({ type: TournamentView })

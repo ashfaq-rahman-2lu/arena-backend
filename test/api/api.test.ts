@@ -1496,3 +1496,75 @@ test("scorecard extraction is restricted to eFootball tournaments", async (): Pr
     9,
   );
 });
+
+test("stats quota is serialized, archiving preserves results and releases a slot", async (): Promise<void> => {
+  let t = await start(await create(admin, { ...initial, statsEnabled: true }));
+  const match = required(t.matches[0]);
+  t = readResponse<TournamentView>(
+    await score(t, match, 2, 1, {
+      stats: [
+        { key: "shots", label: "Shots", unit: "count", home: 0, away: 7 },
+      ],
+    }).expect(200),
+    "TournamentView",
+  );
+  const publicStats = readResponse<
+    import("../../src/stats/team-stats.dto").TeamStatsView
+  >(
+    await guest
+      .get(`${base}/public/tournaments/${t.publicId}/stats`)
+      .expect(200),
+    "TeamStatsView",
+  );
+  assert.equal(
+    publicStats.teams
+      .find(
+        (
+          team: import("../../src/stats/team-stats.dto").TeamStatsRow,
+        ): boolean => team.entrantId === match.homeId,
+      )
+      ?.stats.find(
+        (
+          stat: import("../../src/stats/team-stats.dto").TeamStatValueView,
+        ): boolean => stat.key === "shots",
+      )?.value,
+    0,
+  );
+  await create(admin, { ...initial, statsEnabled: true });
+  const concurrent = await Promise.all([
+    send(admin, "post", "/tournaments", { ...initial, statsEnabled: true }),
+    send(admin, "post", "/tournaments", { ...initial, statsEnabled: true }),
+  ]);
+  assert.deepEqual(
+    concurrent
+      .map((response: RequestResponse): number => response.status)
+      .sort(),
+    [201, 409],
+  );
+  const preview = await send(
+    admin,
+    "post",
+    `/tournaments/${t.id}/stats/archive-preview`,
+    {},
+  ).expect(200);
+  const impact = readResponse<
+    import("../../src/stats/team-stats.dto").ArchiveStatsPreviewView
+  >(preview, "ArchiveStatsPreviewView");
+  const archived = readResponse<TournamentView>(
+    await send(admin, "post", `/tournaments/${t.id}/stats/archive`, {
+      expectedRevision: impact.tournamentRevision,
+      statsMatchCount: impact.statsMatchCount,
+    }).expect(200),
+    "TournamentView",
+  );
+  assert.equal(archived.statsEnabled, false);
+  assert.equal(
+    archived.matches.find((entry: Match): boolean => entry.id === match.id)
+      ?.homeScore,
+    2,
+  );
+  assert.ok(
+    archived.matches.every((entry: Match): boolean => entry.stats === null),
+  );
+  await create(admin, { ...initial, statsEnabled: true });
+});

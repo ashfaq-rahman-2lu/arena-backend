@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -56,6 +57,10 @@ export class GroupSetup {
   @ApiProperty({}) @IsInt() @Min(1) @Max(256) qualifierCount!: number;
 }
 export class TournamentSetup {
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  statsEnabled?: boolean;
   @ApiProperty({})
   @Transform(({ value }: TransformFnParams): unknown =>
     typeof value === "string" ? value.trim() : value,
@@ -96,6 +101,13 @@ export class TournamentSetup {
 }
 export class RevisionInput {
   @ApiProperty({}) @IsInt() @Min(0) @Max(2147483647) expectedRevision!: number;
+}
+export class ArchiveStatsInput extends RevisionInput {
+  @ApiProperty({ type: Number })
+  @IsInt()
+  @Min(0)
+  @Max(1000000)
+  statsMatchCount!: number;
 }
 export class TournamentUpdate extends TournamentSetup {
   @ApiProperty({}) @IsInt() @Min(0) @Max(2147483647) expectedRevision!: number;

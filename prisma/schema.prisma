@@ -16,6 +16,7 @@ model User {
   sessions Session[]
   tokens AuthToken[]
   tournaments Tournament[]
+  statSlots TournamentStatSlot[]
 }
 model AuthIdentity {
   id String @id @default(uuid())
@@ -58,6 +59,7 @@ model Tournament {
   drawPoints Int @default(1)
   lossPoints Int @default(0)
   revision Int @default(0)
+  statsEnabled Boolean @default(false)
   championId String?
   createdAt DateTime @default(now())
   owner User @relation(fields: [ownerId], references: [id])
@@ -69,7 +71,9 @@ model Tournament {
   qualification QualificationDecision?
   knockoutTies KnockoutTie[]
   history ResultRevision[]
+  statSlot TournamentStatSlot?
   @@index([ownerId, createdAt])
+  @@unique([ownerId, id])
 }
 model Entrant {
   id String @id @default(uuid())
@@ -126,6 +130,7 @@ model Match {
   awayTiebreak Int?
   winnerId String?
   revision Int @default(0)
+  stats Json?
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   home Entrant @relation("home", fields: [homeId], references: [id])
   away Entrant @relation("away", fields: [awayId], references: [id])
@@ -133,6 +138,17 @@ model Match {
   @@unique([tournamentId, stage, scope, round, leg, pairingKey])
   @@unique([knockoutTieId, leg])
   @@index([tournamentId, stage])
+}
+model TournamentStatSlot {
+  id String @id @default(uuid())
+  ownerId String
+  tournamentId String @unique
+  slot Int
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [ownerId, tournamentId], references: [ownerId, id], onDelete: Cascade)
+  @@unique([ownerId, slot])
+  @@unique([ownerId, tournamentId])
+  @@index([ownerId])
 }
 model Bye {
   slot Int @default(0)
