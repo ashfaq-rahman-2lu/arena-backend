@@ -14,6 +14,8 @@ for (const patch of [
   { AUTH_RATE_LIMIT: "-1" },
   { EXTRACTION_RATE_LIMIT: "Infinity" },
   { PADDLEOCR_PYTHON: "" },
+  { PADDLEOCR_TIMEOUT_MS: "0" },
+  { PADDLEOCR_TIMEOUT_MS: "300001" },
   { GOOGLE_CLIENT_ID: "partial" },
   { SMTP_USER: "partial" },
   { NODE_ENV: "production", COOKIE_SECURE: "false" },
@@ -26,5 +28,15 @@ test("optional integrations are represented as disabled", (): void => {
   const config = validateConfiguration(valid);
   assert.equal(config.smtp, null);
   assert.equal(config.google, null);
-  assert.deepEqual(config.vision, { python: "python3" });
+  assert.deepEqual(config.vision, { python: "python3", timeoutMs: 75000 });
+});
+
+test("OCR timeout accepts a deployment override", (): void => {
+  assert.equal(
+    Reflect.get(
+      validateConfiguration({ ...valid, PADDLEOCR_TIMEOUT_MS: "45000" }).vision,
+      "timeoutMs",
+    ),
+    45000,
+  );
 });

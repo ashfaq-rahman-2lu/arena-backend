@@ -99,10 +99,12 @@ python3 -m venv .venv-ocr
 .venv-ocr/bin/python ocr/score_reader.py --warmup
 ```
 
-Set `PADDLEOCR_PYTHON` in `.env` to the absolute path of `.venv-ocr/bin/python`, then start/restart the API. The default is `python3` when dependencies are installed there. Warmup downloads the free English recognition weights once; subsequent extraction runs on CPU locally with a 30-second limit and no OpenAI calls. Run the API from the backend repository root. Docker installs Python and warms up the weights during build; Render uses that Docker image. PaddleOCR increases image size and memory usage; verify available memory on your host.
+Set `PADDLEOCR_PYTHON` in `.env` to the absolute path of `.venv-ocr/bin/python`, then start/restart the API. The default is `python3` when dependencies are installed there. Warmup downloads the free English recognition weights once; subsequent extraction runs on CPU locally with a configurable 75-second limit (`PADDLEOCR_TIMEOUT_MS=75000`) and no OpenAI calls. Run the API from the backend repository root. Docker installs Python and warms up the weights during build; Render uses that Docker image. PaddleOCR increases image size and memory usage; verify available memory on your host.
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
 # Real model regression against the supplied screenshot (requires warmup):
 PADDLEOCR_INTEGRATION=1 PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
 ```
+
+OCR process failures log `ocr_process_failure` with a safe reason (`timeout`, `spawn_failed`, `process_exit`, or `output_limit`), duration, exit code, and signal. Image data and raw Python stderr are not logged. The timeout includes Python startup and model loading for each upload. The frontend proxy has a 90-second timeout; keep the OCR budget below that when using the proxy. Increasing the budget does not resolve memory-related process kills.
