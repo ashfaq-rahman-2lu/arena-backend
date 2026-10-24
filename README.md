@@ -109,6 +109,10 @@ PADDLEOCR_INTEGRATION=1 PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/padd
 
 ### Persistent OCR worker and timings
 
+The backend automatically chooses extraction scope from the tournament's `statsEnabled` setting after checking ownership and game type. When stat recording is disabled, OCR receives only the two score cells and returns `stats: []`. When enabled, it receives all 28 score/stat cells and returns the thirteen stat rows. No extra choice is presented to the owner, and extraction never saves a result automatically or clears existing drafts/results.
+
+The authenticated multipart endpoint `POST /api/v1/matches/:matchId/extract-score` continues to accept only `image`. Clients cannot override the extraction mode with a multipart field. Existing clients need no upload changes. Internal providers and workers retain full extraction as their default for callers outside the match workflow; each queued request carries its own mode. The high bit of the four-byte binary frame header selects score-only extraction, while the remaining 31 bits encode the bounded image size.
+
 Score tiles are located dynamically by yellow color, rectangular shape, matching dimensions, alignment, and a navy gap with yellow emblem content. Detection searches the central scoreboard area (30–70% of image width, 5–28% of image height) at a maximum width of 1024 pixels, then maps the boxes to the original image. It requires exactly one plausible pair and never guesses from the old score coordinates. Missing, misaligned, or ambiguous boxes return the existing manual-entry warning. This uses NumPy/Pillow preprocessing and adds no model or OCR inference call.
 
 Preprocessing removes nearly full-height/width separator lines at the outer edges of each detected score tile. Interior digit pixels, strict numeric parsing, and the 0.85 confidence threshold are preserved. The thirteen statistic rows retain their existing normalized coordinates, and the supported full-image dimensions/aspect ratio are unchanged; moving or adding margins around the entire screenshot is not supported by this score-only change. Regressions cover both supplied scorecards, scaled images, shifted/resized score tiles, unchanged stat crops, unrelated yellow regions, and ambiguous layouts. An unsupported layout still requires manual entry.
@@ -120,7 +124,7 @@ Uploads use a bounded binary protocol over the worker's stdin. One image is proc
 Structured logs contain only timing and process metadata:
 
 - `ocr_worker_ready`: `startupMs` (Python launch plus initialization), `modelLoadMs` (PaddleOCR import and model creation).
-- `ocr_phases`: `queueMs`, `prepareMs` (image decoding and crops), `inferenceMs`, and `totalMs` (request time including waiting).
+- `ocr_phases`: `mode` (`scores` or `full`), `cells` (2 or 28), `queueMs`, `prepareMs` (image decoding and crops), `inferenceMs`, and `totalMs` (request time including waiting).
 - `ocr_process_failure`: safe reason, duration, exit code, and signal. Images, results, raw Python stderr, and executable paths are not logged.
 
 `queueMs` includes any remaining startup wait; do not add `startupMs` to it when calculating request totals. The first inference after a restart can still have initialization overhead. The frontend proxy has a 90-second timeout; keep the OCR request budget below that when using the proxy. Model reuse reduces repeated startup work, but does not increase available CPU or memory. The one-shot CLI and build-time `--warmup` remain supported.

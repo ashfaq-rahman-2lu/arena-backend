@@ -1,4 +1,4 @@
-"""Read scores and all thirteen statistic rows in the supplied eFootball full-time template.
+"""Read scores and optionally all thirteen stat rows in the eFootball full-time template.
 
 Accepts an already validated, normalized image on stdin; emits JSON on stdout.
 Model assets are downloaded once by --warmup, then reused locally.
@@ -139,7 +139,7 @@ def find_score_boxes(image: "Image.Image") -> tuple[PixelBox, PixelBox]:
     return mapped[0], mapped[1]
 
 
-def score_crops(image_bytes: bytes) -> list:
+def score_crops(image_bytes: bytes, include_stats: bool = True) -> list:
     import numpy as np
     from PIL import Image, ImageOps, ImageChops
 
@@ -166,6 +166,8 @@ def score_crops(image_bytes: bytes) -> list:
         binary = Image.fromarray(ink)
         padded = ImageOps.expand(binary, border=max(4, tile.width // 8), fill=255)
         crops.append(np.asarray(padded.convert("RGB")))
+    if not include_stats:
+        return crops
     # Yellow stat digits on navy become black on white. Crop each numeric cell
     # separately so labels, separator lines, and neighboring rows cannot merge.
     for row in range(len(STAT_ROWS)):
@@ -193,12 +195,14 @@ def create_model():
 
 
 
-def read_scores(image_bytes: bytes, model: RecognitionModel | None = None, timings: dict[str, float] | None = None) -> dict:
+def read_scores(image_bytes: bytes, model: RecognitionModel | None = None, timings: dict[str, float] | None = None, mode: str = "full") -> dict:
+    if mode not in ("scores", "full"):
+        raise ValueError("Unsupported extraction mode")
     preparation_started = time.perf_counter()
     if timings is not None:
         timings.update(prepareMs=0.0, inferenceMs=0.0)
     try:
-        crops = score_crops(image_bytes)
+        crops = score_crops(image_bytes, include_stats=mode == "full")
     except ValueError:
         return {"homeScore": None, "awayScore": None,
                 "stats": [], "warnings": ["Use the full eFootball screenshot with the yellow score boxes, matching the supported template."]}
@@ -211,13 +215,13 @@ def read_scores(image_bytes: bytes, model: RecognitionModel | None = None, timin
     predictions = list(model.predict(input=crops, batch_size=8))
     if timings is not None:
         timings["inferenceMs"] = (time.perf_counter() - inference_started) * 1000
-    if len(predictions) != 2 + len(STAT_ROWS) * 2:
+    if len(predictions) != (2 if mode == "scores" else 2 + len(STAT_ROWS) * 2):
         raise ValueError("Incomplete OCR predictions")
     scores = [parse_score(str(item["rec_text"]), float(item["rec_score"])) for item in predictions[:2]]
     warnings = [f"Unreadable {side} score. Enter it manually."
                 for side, score in zip(("home", "away"), scores) if score is None]
     stats = []
-    for row, (key, label) in enumerate(STAT_ROWS):
+    for row, (key, label) in enumerate(STAT_ROWS if mode == "full" else ()):
         values = [parse_stat(str(item["rec_text"]), float(item["rec_score"]), row == 0)
                   for item in predictions[2 + row * 2:4 + row * 2]]
         stats.append({"key": key, "label": label, "home": values[0], "away": values[1],
@@ -257,7 +261,10 @@ def serve_worker(source: BinaryIO, output: TextIO) -> None:
         try:
             if len(header) != 4:
                 raise ValueError("Incomplete frame")
-            size = struct.unpack(">I", header)[0]
+            # High bit selects two-cell extraction; the other bits bound image size.
+            frame = struct.unpack(">I", header)[0]
+            mode = "scores" if frame & 0x80000000 else "full"
+            size = frame & 0x7fffffff
             if size > MAX_IMAGE_BYTES:
                 raise ValueError("Frame too large")
             image_bytes = read_exact(source, size)
@@ -265,7 +272,7 @@ def serve_worker(source: BinaryIO, output: TextIO) -> None:
                 raise ValueError("Incomplete image")
             timings: dict[str, float] = {}
             with contextlib.redirect_stdout(sys.stderr):
-                result = read_scores(image_bytes, model, timings)
+                result = read_scores(image_bytes, model, timings, mode)
             emit(output, {"type": "result", "result": result, "timings": timings})
         except Exception:
             # No image, prediction, or arbitrary exception text crosses the diagnostic boundary.

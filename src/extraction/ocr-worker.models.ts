@@ -1,6 +1,6 @@
 import { ChildProcessWithoutNullStreams } from "node:child_process";
 import { z } from "zod";
-import { matchStats } from "./extraction.models";
+import { ExtractionMode, matchStats } from "./extraction.models";
 
 const score = z.number().int().min(0).max(99).nullable();
 export const ocrResultSchema = z.object({
@@ -21,6 +21,7 @@ export const workerMessageSchema = z.discriminatedUnion("type", [
 ]);
 export interface OcrJob {
   image: Buffer;
+  mode: ExtractionMode;
   started: number;
   dispatched: number;
   timer: ReturnType<typeof setTimeout>;

@@ -233,6 +233,15 @@ test(
       assert.equal(borderedResult.awayScore, 5);
       assert.equal(borderedResult.stats.length, 13);
       assert.deepEqual(borderedResult.warnings, []);
+      const scoresOnly = await service.read(
+        { buffer: bordered, size: bordered.length } as Express.Multer.File,
+        entrants,
+        "scores",
+      );
+      assert.equal(scoresOnly.homeScore, 4);
+      assert.equal(scoresOnly.awayScore, 5);
+      assert.deepEqual(scoresOnly.stats, []);
+      assert.deepEqual(scoresOnly.warnings, []);
     } finally {
       await worker.onModuleDestroy();
     }

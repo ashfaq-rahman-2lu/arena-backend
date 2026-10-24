@@ -62,6 +62,35 @@ def score_scene(boxes: list[tuple[int, int, int, int]], emblem: bool = True) -> 
     return output.getvalue()
 
 class ScoreReaderTest(unittest.TestCase):
+    def test_score_only_recognizes_two_cells_without_stat_warnings(self) -> None:
+        module = importlib.util.module_from_spec(SPEC)
+        SPEC.loader.exec_module(module)
+        model = Mock()
+        model.predict.return_value = [{"rec_text": "4", "rec_score": 0.99}, {"rec_text": "5", "rec_score": 0.99}]
+        payload = (Path(__file__).parent / "fixtures" / "scorer_image_bordered.jpg").read_bytes()
+        result = module.read_scores(payload, model, mode="scores")
+        self.assertEqual(len(model.predict.call_args.kwargs["input"]), 2)
+        self.assertEqual(result, {"homeScore": 4, "awayScore": 5, "stats": [], "warnings": []})
+
+    def test_worker_keeps_mode_per_frame(self) -> None:
+        module = importlib.util.module_from_spec(SPEC)
+        SPEC.loader.exec_module(module)
+        model = Mock()
+        model.predict.side_effect = [
+            [{"rec_text": "4", "rec_score": 0.99}, {"rec_text": "5", "rec_score": 0.99}],
+            [{"rec_text": "0", "rec_score": 0.99} for _ in range(28)],
+        ]
+        payload = (Path(__file__).parent / "fixtures" / "scorer_image_bordered.jpg").read_bytes()
+        frames = struct.pack(">I", len(payload) + 0x80000000) + payload + struct.pack(">I", len(payload)) + payload
+        output = io.StringIO()
+        with patch.object(module, "create_model", return_value=model):
+            module.serve_worker(io.BytesIO(frames), output)
+        messages = [json.loads(line) for line in output.getvalue().splitlines()]
+        self.assertEqual([message["type"] for message in messages], ["ready", "result", "result"])
+        self.assertEqual(messages[1]["result"]["stats"], [])
+        self.assertEqual(len(messages[2]["result"]["stats"]), 13)
+        self.assertEqual([len(call.kwargs["input"]) for call in model.predict.call_args_list], [2, 28])
+
     def test_score_crops_remove_tile_separators_without_erasing_digits(self) -> None:
         import numpy as np
         module = importlib.util.module_from_spec(SPEC)

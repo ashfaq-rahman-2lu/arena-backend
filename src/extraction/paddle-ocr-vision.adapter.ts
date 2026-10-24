@@ -3,7 +3,7 @@ import { ocrResultSchema as resultSchema } from "./ocr-worker.models";
 import { ApplicationError } from "../common/application-error";
 import { ConfigurationService } from "../config/configuration.service";
 import { Entrant } from "../domain/engine";
-import { Extracted, VisionProvider } from "./extraction.models";
+import { Extracted, ExtractionMode, VisionProvider } from "./extraction.models";
 import { OcrProcess } from "./paddle-ocr-process.adapter";
 
 @Injectable()
@@ -15,11 +15,15 @@ export class PaddleOcrVisionAdapter extends VisionProvider {
     super();
   }
 
-  async read(image: Buffer, _entrants: Entrant[]): Promise<Extracted> {
+  async read(
+    image: Buffer,
+    _entrants: Entrant[],
+    mode: ExtractionMode = "full",
+  ): Promise<Extracted> {
     try {
       const result = resultSchema.parse(
         JSON.parse(
-          await this.process.run(this.config.values.vision.python, image),
+          await this.process.run(this.config.values.vision.python, image, mode),
         ),
       );
       return {

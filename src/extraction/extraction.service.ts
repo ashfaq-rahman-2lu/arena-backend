@@ -32,6 +32,7 @@ import { ApplicationError } from "../common/application-error";
 import { Entrant } from "../domain/engine";
 import {
   Extracted,
+  ExtractionMode,
   extracted,
   MatchStat,
   VisionProvider,
@@ -63,6 +64,7 @@ export class ExtractionService {
   async read(
     file: Express.Multer.File | undefined,
     entrants: Entrant[],
+    mode: ExtractionMode = "full",
   ): Promise<ReadResult> {
     if (!file || file.size > 10 * 1024 * 1024)
       throw new ApplicationError(
@@ -100,11 +102,13 @@ export class ExtractionService {
     const start = Date.now();
     try {
       const result = mapExtraction(
-        extracted.parse(await this.provider.read(image, entrants)),
+        extracted.parse(await this.provider.read(image, entrants, mode)),
         entrants,
       );
+      if (mode === "scores") result.stats = [];
       this.log.log({
         event: "extraction",
+        mode,
         ok: true,
         ms: Date.now() - start,
       });
@@ -112,6 +116,7 @@ export class ExtractionService {
     } catch (e) {
       this.log.warn({
         event: "extraction",
+        mode,
         ok: false,
         ms: Date.now() - start,
       });

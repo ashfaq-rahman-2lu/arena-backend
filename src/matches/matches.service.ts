@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { ApplicationError } from "../common/application-error";
 import { ExtractionSuggestion } from "../extraction/extraction-response.dto";
 import { ExtractionService } from "../extraction/extraction.service";
+import { ExtractionMode } from "../extraction/extraction.models";
 import { TournamentMutationsPort } from "../tournaments/tournament-mutations.port";
 import { TournamentView } from "../tournaments/tournament-response.dto";
 import { CorrectionImpact } from "./match-response.dto";
@@ -47,6 +48,7 @@ export class MatchesService {
       );
     if (!home || !away)
       throw new ApplicationError("NOT_FOUND", 404, "Match entrants not found");
-    return this.extraction.read(image, [home, away]);
+    const mode: ExtractionMode = t.statsEnabled ? "full" : "scores";
+    return this.extraction.read(image, [home, away], mode);
   }
 }

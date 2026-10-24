@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Entrant } from "../domain/engine";
+export type ExtractionMode = "scores" | "full";
 export const matchStat = z
   .object({
     key: z.enum([
@@ -74,5 +75,9 @@ export const extracted = z.object({
 });
 export type Extracted = z.infer<typeof extracted>;
 export abstract class VisionProvider {
-  abstract read(image: Buffer, entrants: Entrant[]): Promise<Extracted>;
+  abstract read(
+    image: Buffer,
+    entrants: Entrant[],
+    mode?: ExtractionMode,
+  ): Promise<Extracted>;
 }

@@ -52,7 +52,7 @@ export class MatchesController {
   @ApiOperation({
     summary: "Extract scores and match stats for an eFootball tournament",
     description:
-      "Only available when the match belongs to an EFOOTBALL tournament. Other games return 400 RULE_VIOLATION; manual result entry remains available.",
+      "Only available for EFOOTBALL; other games return 400 RULE_VIOLATION. The backend automatically recognizes two score cells when tournament stat recording is disabled, or scores and all thirteen stat rows when enabled. Clients upload only the image. Suggestions never save results or stats.",
   })
   @ApiConsumes("multipart/form-data")
   @ApiBody({

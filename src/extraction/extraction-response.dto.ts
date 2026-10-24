@@ -45,7 +45,7 @@ export class ExtractionSuggestion {
   @ApiPropertyOptional({
     type: [ExtractedMatchStat],
     description:
-      "All thirteen match stat rows; unreadable cells are null. Suggestions only.",
+      "All thirteen match stat rows when tournament stat recording is enabled; empty array when disabled. Unreadable cells are null. Suggestions only.",
   })
   stats?: ExtractedMatchStat[];
   @ApiProperty({ type: [String] }) warnings!: string[];
