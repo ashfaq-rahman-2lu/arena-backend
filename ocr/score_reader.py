@@ -153,15 +153,15 @@ def score_crops(image_bytes: bytes, include_stats: bool = True) -> list:
         # The navy digits become black against white; padding helps single digits.
         binary = tile.convert("L").point(lambda value: 255 if value > 125 else 0)
         # A scaled screenshot can include the tile's navy separator at either edge.
-        # Remove only nearly full-height/width edge lines; keep interior digit ink.
+        # Clear edge rows/columns with at least 20% dark pixels; leave interior digit ink unchanged.
         ink = np.asarray(binary).copy()
         edge_width = max(1, round(tile.width * 0.1))
         for column in (*range(edge_width), *range(tile.width - edge_width, tile.width)):
-            if float((ink[:, column] == 0).mean()) >= 0.8:
+            if float((ink[:, column] == 0).mean()) >= 0.2:
                 ink[:, column] = 255
         edge_height = max(1, round(tile.height * 0.1))
         for row in (*range(edge_height), *range(tile.height - edge_height, tile.height)):
-            if float((ink[row, :] == 0).mean()) >= 0.8:
+            if float((ink[row, :] == 0).mean()) >= 0.2:
                 ink[row, :] = 255
         binary = Image.fromarray(ink)
         padded = ImageOps.expand(binary, border=max(4, tile.width // 8), fill=255)

@@ -103,6 +103,29 @@ class ScoreReaderTest(unittest.TestCase):
         self.assertEqual([len(call.kwargs["input"]) for call in model.predict.call_args_list], [2, 28])
         self.assertEqual([call.kwargs["batch_size"] for call in model.predict.call_args_list], [2, 2])
 
+    def test_score_edge_cleanup_removes_twenty_percent_lines_but_keeps_shorter_marks(self) -> None:
+        import numpy as np
+        from PIL import Image, ImageDraw
+        module = importlib.util.module_from_spec(SPEC)
+        SPEC.loader.exec_module(module)
+        image = Image.new("RGB", (2048, 945), "yellow")
+        draw = ImageDraw.Draw(image)
+        draw.line((40, 0, 59, 0), fill="black")
+        draw.line((40, 1, 58, 1), fill="black")
+        draw.line((0, 40, 0, 59), fill="black")
+        draw.line((1, 40, 1, 58), fill="black")
+        draw.rectangle((45, 30, 54, 69), fill="black")
+        payload = io.BytesIO()
+        image.save(payload, format="PNG")
+        with patch.object(module, "find_score_boxes", return_value=((0, 0, 100, 100), (120, 0, 220, 100))):
+            crop = module.score_crops(payload.getvalue(), include_stats=False)[0]
+        ink = crop[12:112, 12:112, 0]
+        self.assertEqual(int(np.count_nonzero(ink[0] == 0)), 0)
+        self.assertEqual(int(np.count_nonzero(ink[1] == 0)), 19)
+        self.assertEqual(int(np.count_nonzero(ink[:, 0] == 0)), 0)
+        self.assertEqual(int(np.count_nonzero(ink[:, 1] == 0)), 19)
+        self.assertEqual(int(np.count_nonzero(ink[30:70, 45:55] == 0)), 400)
+
     def test_score_crops_remove_tile_separators_without_erasing_digits(self) -> None:
         import numpy as np
         module = importlib.util.module_from_spec(SPEC)

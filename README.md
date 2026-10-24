@@ -109,6 +109,8 @@ PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
 PADDLEOCR_INTEGRATION=1 PYTHONDONTWRITEBYTECODE=1 .venv-ocr/bin/python test/paddleocr_test.py
 ```
 
+Score crop cleanup clears rows and columns in the outer 10% edge band when at least 20% of their pixels are black. This replaces the previous 80% cleanup threshold; stat crop preprocessing is unchanged. OCR acceptance still requires 85% confidence for both scores and stats.
+
 ### Persistent OCR worker and timings
 
 The backend automatically chooses extraction scope from the tournament's `statsEnabled` setting after checking ownership and game type. When stat recording is disabled, OCR receives only the two score cells and returns `stats: []`. When enabled, it receives all 28 score/stat cells and returns the thirteen stat rows. No extra choice is presented to the owner, and extraction never saves a result automatically or clears existing drafts/results.
