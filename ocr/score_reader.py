@@ -212,7 +212,7 @@ def read_scores(image_bytes: bytes, model: RecognitionModel | None = None, timin
     if model is None:
         model = create_model()
     inference_started = time.perf_counter()
-    predictions = list(model.predict(input=crops, batch_size=8))
+    predictions = list(model.predict(input=crops, batch_size=2))
     if timings is not None:
         timings["inferenceMs"] = (time.perf_counter() - inference_started) * 1000
     if len(predictions) != (2 if mode == "scores" else 2 + len(STAT_ROWS) * 2):
