@@ -101,6 +101,7 @@ class ScoreReaderTest(unittest.TestCase):
         self.assertEqual(messages[1]["result"]["stats"], [])
         self.assertEqual(len(messages[2]["result"]["stats"]), 13)
         self.assertEqual([len(call.kwargs["input"]) for call in model.predict.call_args_list], [2, 28])
+        self.assertEqual([call.kwargs["batch_size"] for call in model.predict.call_args_list], [2, 2])
 
     def test_score_crops_remove_tile_separators_without_erasing_digits(self) -> None:
         import numpy as np
