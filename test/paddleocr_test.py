@@ -62,6 +62,17 @@ def score_scene(boxes: list[tuple[int, int, int, int]], emblem: bool = True) -> 
     return output.getvalue()
 
 class ScoreReaderTest(unittest.TestCase):
+    def test_model_uses_single_cpu_thread_for_render_benchmark(self) -> None:
+        module = importlib.util.module_from_spec(SPEC)
+        SPEC.loader.exec_module(module)
+        recognition = Mock()
+        with patch.dict("sys.modules", {"paddleocr": Mock(TextRecognition=recognition)}):
+            model = module.create_model()
+        self.assertIs(model, recognition.return_value)
+        recognition.assert_called_once_with(
+            model_name="en_PP-OCRv4_mobile_rec", device="cpu", cpu_threads=1
+        )
+
     def test_score_only_recognizes_two_cells_without_stat_warnings(self) -> None:
         module = importlib.util.module_from_spec(SPEC)
         SPEC.loader.exec_module(module)

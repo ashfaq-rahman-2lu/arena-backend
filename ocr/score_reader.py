@@ -191,7 +191,7 @@ def create_model():
     os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
     from paddleocr import TextRecognition
-    return TextRecognition(model_name="en_PP-OCRv4_mobile_rec", device="cpu", cpu_threads=2)
+    return TextRecognition(model_name="en_PP-OCRv4_mobile_rec", device="cpu", cpu_threads=1)
 
 
 
