@@ -9,9 +9,14 @@ import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { ConfigurationService } from "../config/configuration.service";
 import { OcrJob, OcrWorker, workerMessageSchema } from "./ocr-worker.models";
+import { ExtractionMode } from "./extraction.models";
 
 export abstract class OcrProcess {
-  abstract run(python: string, image: Buffer): Promise<string>;
+  abstract run(
+    python: string,
+    image: Buffer,
+    mode?: ExtractionMode,
+  ): Promise<string>;
 }
 const MAX_JOBS = 3;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -40,7 +45,11 @@ export class PaddleOcrProcessAdapter
       this.ensureWorker(this.config.values.vision.python);
   }
 
-  run(python: string, image: Buffer): Promise<string> {
+  run(
+    python: string,
+    image: Buffer,
+    mode: ExtractionMode = "full",
+  ): Promise<string> {
     if (
       this.stopped ||
       image.length > MAX_IMAGE_BYTES ||
@@ -57,6 +66,7 @@ export class PaddleOcrProcessAdapter
       ): void => {
         const job: OcrJob = {
           image,
+          mode,
           started: Date.now(),
           dispatched: 0,
           resolve: resolveOutput,
@@ -121,7 +131,10 @@ export class PaddleOcrProcessAdapter
     this.active = job;
     job.dispatched = Date.now();
     const header = Buffer.alloc(4);
-    header.writeUInt32BE(job.image.length);
+    // The high bit selects score-only mode; the remaining 31 bits hold image size.
+    header.writeUInt32BE(
+      job.image.length + (job.mode === "scores" ? 0x80000000 : 0),
+    );
     worker.child.stdin.write(
       Buffer.concat([header, job.image]),
       (error: Error | null | undefined): void => {
@@ -158,6 +171,8 @@ export class PaddleOcrProcessAdapter
           clearTimeout(job.timer);
           this.log.log({
             event: "ocr_phases",
+            mode: job.mode,
+            cells: job.mode === "scores" ? 2 : 28,
             queueMs: job.dispatched - job.started,
             totalMs: Date.now() - job.started,
             ...message.timings,

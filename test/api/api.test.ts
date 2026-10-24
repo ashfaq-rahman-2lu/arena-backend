@@ -64,20 +64,25 @@ const fakeHttp: HttpTransport = {
       { status: 200 },
     ),
 };
+let lastExtractionMode: unknown;
 const fakeVision: VisionProvider = {
   read: async (
     _image: Buffer,
     _entrants: Entrant[],
-  ): Promise<import("../../src/extraction/extraction.models").Extracted> => ({
-    sides: [
-      { name: null, score: 4, tiebreak: null },
-      { name: "Unrelated team", score: 1, tiebreak: null },
-    ],
-    stats: [
-      { key: "passes", label: "Passes", home: 115, away: 79, unit: "count" },
-    ],
-    warnings: [],
-  }),
+    mode?: unknown,
+  ): Promise<import("../../src/extraction/extraction.models").Extracted> => {
+    lastExtractionMode = mode;
+    return {
+      sides: [
+        { name: null, score: 4, tiebreak: null },
+        { name: "Unrelated team", score: 1, tiebreak: null },
+      ],
+      stats: [
+        { key: "passes", label: "Passes", home: 115, away: 79, unit: "count" },
+      ],
+      warnings: [],
+    };
+  },
 };
 let app: INestApplication, db: Db, smtp: Server;
 const messages: string[] = [];
@@ -187,6 +192,7 @@ before(async (): Promise<void> => {
   );
 });
 beforeEach(async (): Promise<void> => {
+  lastExtractionMode = undefined;
   messages.length = 0;
   emailFailure = false;
   profile = {
@@ -588,7 +594,7 @@ test("extraction checks ownership, rejects invalid uploads, and does not persist
     );
     assert.deepEqual(
       readResponse<ExtractionSuggestion>(result, "ExtractionSuggestion").stats,
-      [{ key: "passes", label: "Passes", home: 115, away: 79, unit: "count" }],
+      [],
     );
     assert.equal(
       required(await db.match.findUnique({ where: { id: m.id } })).homeScore,
@@ -600,6 +606,57 @@ test("extraction checks ownership, rejects invalid uploads, and does not persist
       .attach("image", Buffer.from("invalid"), "score.png")
       .expect(400);
   } finally {
+  }
+});
+test("backend selects extraction mode from tournament stats setting without persisting suggestions", async (): Promise<void> => {
+  const image = await sharp({
+    create: { width: 50, height: 50, channels: 3, background: "white" },
+  })
+    .png()
+    .toBuffer();
+  for (const statsEnabled of [false, true]) {
+    const t = await start(await create(admin, { ...initial, statsEnabled }));
+    const m = t.matches[0];
+    const upload = admin
+      .post(`${base}/matches/${m.id}/extract-score`)
+      .set("X-CSRF-Token", csrf);
+    const response = await upload
+      .attach("image", image, "score.png")
+      .expect(201);
+    const result = readResponse<ExtractionSuggestion>(
+      response,
+      "ExtractionSuggestion",
+    );
+    assert.equal(result.homeScore, 4);
+    assert.equal(lastExtractionMode, statsEnabled ? "full" : "scores");
+    assert.equal(result.stats?.length, statsEnabled ? 1 : 0);
+    const persisted = required(
+      await db.match.findUnique({ where: { id: m.id } }),
+    );
+    assert.equal(persisted.homeScore, null);
+    assert.equal(persisted.stats, null);
+    assert.equal(persisted.revision, m.revision);
+  }
+});
+test("extraction rejects invalid and unexpected multipart options before OCR", async (): Promise<void> => {
+  const t = await start(await create());
+  const image = await sharp({
+    create: { width: 50, height: 50, channels: 3, background: "white" },
+  })
+    .png()
+    .toBuffer();
+  for (const [key, value] of [
+    ["mode", "full"],
+    ["mode", "scores"],
+    ["unknown", "scores"],
+  ]) {
+    await admin
+      .post(`${base}/matches/${t.matches[0].id}/extract-score`)
+      .set("X-CSRF-Token", csrf)
+      .field(key, value)
+      .attach("image", image, "score.png")
+      .expect(400);
+    assert.equal(lastExtractionMode, undefined);
   }
 });
 test("knockout corrections preserve winners, reject stale previews, and reset only later rounds", async (): Promise<void> => {

@@ -67,14 +67,15 @@ let buffer = Buffer.alloc(0);
 process.stdout.write(JSON.stringify({type:'ready',modelLoadMs:12})+'\\n');
 process.stdin.on('data', chunk => {
  buffer = Buffer.concat([buffer,chunk]);
- while(buffer.length>=4 && buffer.length>=4+buffer.readUInt32BE(0)) {
-  const size=buffer.readUInt32BE(0);
+ while(buffer.length>=4 && buffer.length>=4+(buffer.readUInt32BE(0)&0x7fffffff)) {
+  const mode=buffer.readUInt32BE(0)>=0x80000000?'scores':'full';
+  const size=buffer.readUInt32BE(0)&0x7fffffff;
   const value=buffer.subarray(4,4+size).toString(); buffer=buffer.subarray(4+size);
   if(value==='crash') { process.exit(1); return; }
   if(value==='hang') continue;
   if(value==='overflow') {process.stdout.write('x'.repeat(65537));continue;}
   if(value==='malformed') {process.stdout.write('not-json\\n');continue;}
-  const result={homeScore:Number(value),awayScore:0,stats:[],warnings:[String(process.pid)]};
+  const result={homeScore:Number(value),awayScore:0,stats:[],warnings:[String(process.pid),mode]};
   setTimeout(()=>process.stdout.write(JSON.stringify({type:'result',result,timings:{prepareMs:1,inferenceMs:2}})+'\\n'),20);
  }
 });
@@ -156,6 +157,33 @@ test("OCR worker reuses one process and keeps concurrent responses matched", asy
           event !== null &&
           Reflect.get(event, "inferenceMs") === 2,
       ),
+    );
+  } finally {
+    await fixture.close();
+  }
+});
+test("OCR worker keeps extraction mode with each queued image", async (): Promise<void> => {
+  const fixture = await workerFixture();
+  try {
+    const outputs = await Promise.all([
+      fixture.adapter.run(fixture.executable, Buffer.from("1"), "scores"),
+      fixture.adapter.run(fixture.executable, Buffer.from("2"), "full"),
+    ]);
+    assert.match(outputs[0], /"scores"/);
+    assert.match(outputs[1], /"full"/);
+    const phases = fixture.logs.filter(
+      (event: unknown): boolean =>
+        typeof event === "object" &&
+        event !== null &&
+        Reflect.get(event, "event") === "ocr_phases",
+    );
+    assert.deepEqual(
+      phases.map((event: unknown): unknown =>
+        typeof event === "object" && event !== null
+          ? Reflect.get(event, "cells")
+          : null,
+      ),
+      [2, 28],
     );
   } finally {
     await fixture.close();
