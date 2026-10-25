@@ -13,7 +13,11 @@ export class RateGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthedRequest>();
     const extraction = request.path.endsWith("/extract-score"),
-      auth = request.path.includes("/auth/") && request.method === "POST";
+      auth =
+        (request.path.includes("/auth/") && request.method === "POST") ||
+        (request.path.endsWith("/auth/google") && request.method === "GET") ||
+        (request.path.includes("/following/") &&
+          ["PUT", "DELETE"].includes(request.method));
     if (!extraction && !auth) return true;
     const now = Date.now(),
       key = extraction ? `vision:${request.userId}` : `auth:${request.ip}`;

@@ -1,8 +1,7 @@
 import * as argon2 from "argon2";
 import { execFileSync } from "node:child_process";
 import { createApp } from "../src/app";
-import { EmailMessage } from "../src/auth/auth.models";
-import { EmailPort } from "../src/auth/smtp-email.adapter";
+import { BrowserAccountFixture } from "./browser-account-fixture";
 import { offlineEnvironment } from "../src/config/configuration";
 import { DatabaseService } from "../src/database/database.service";
 import { Entrant } from "../src/domain/engine";
@@ -27,9 +26,7 @@ async function main(): Promise<void> {
       stdio: "inherit",
     },
   );
-  const email: EmailPort = {
-    send: async (_message: EmailMessage): Promise<void> => {},
-  };
+  const accounts = new BrowserAccountFixture();
   const vision: VisionProvider = {
     read: async (_image: Buffer, entrants: Entrant[]): Promise<Extracted> => ({
       sides: entrants.map(
@@ -50,10 +47,15 @@ async function main(): Promise<void> {
       PORT: "3001",
       AUTH_RATE_LIMIT: "1000",
       EXTRACTION_RATE_LIMIT: "1000",
+      GOOGLE_CLIENT_ID: "local-fake-client",
+      GOOGLE_CLIENT_SECRET: "local-fake-secret",
+      GOOGLE_CALLBACK_URL: "http://127.0.0.1:3001/api/v1/auth/google/callback",
     },
-    email,
+    email: accounts,
+    oauth: accounts,
     vision,
   });
+  accounts.install(app);
   await app.init();
   const db = app.get(DatabaseService);
   await db.$transaction([

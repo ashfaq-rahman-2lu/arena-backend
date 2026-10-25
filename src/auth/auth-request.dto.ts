@@ -7,7 +7,24 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  Validate,
+  ValidationArguments,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
 } from "class-validator";
+@ValidatorConstraint({ name: "exactlyOneOAuthResult", async: false })
+class ExactlyOneOAuthResult implements ValidatorConstraintInterface {
+  validate(_value: unknown, args: ValidationArguments): boolean {
+    const value: unknown = args.object;
+    if (!value || typeof value !== "object") return false;
+    const code: unknown = Reflect.get(value, "code");
+    const error: unknown = Reflect.get(value, "error");
+    return (typeof code === "string") !== (typeof error === "string");
+  }
+  defaultMessage(): string {
+    return "Provide exactly one of code or error";
+  }
+}
 export class EmailInput {
   @ApiProperty({ maxLength: 254 })
   @Transform(({ value }: TransformFnParams): unknown =>
@@ -47,11 +64,46 @@ export class TokenInput {
 export class ResetInput extends TokenInput {
   @ApiProperty({}) @IsString() @MinLength(10) @MaxLength(128) password!: string;
 }
+export class ProfileUpdateInput {
+  @ApiProperty({ minLength: 1, maxLength: 80 })
+  @Transform(({ value }: TransformFnParams): unknown =>
+    typeof value === "string" ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  name!: string;
+}
+export class PasswordChangeInput {
+  @ApiProperty({ minLength: 10, maxLength: 128 })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(128)
+  currentPassword!: string;
+  @ApiProperty({ minLength: 10, maxLength: 128 })
+  @IsString()
+  @MinLength(10)
+  @MaxLength(128)
+  password!: string;
+}
+export class EmailChangeInput extends EmailInput {
+  @ApiPropertyOptional({ minLength: 10, maxLength: 128 })
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  @MaxLength(128)
+  currentPassword?: string;
+}
 export class GoogleStartQuery {
   @ApiPropertyOptional({ enum: ["1", "0"] })
   @IsOptional()
   @IsIn(["1", "0"])
   link?: string;
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  returnTo?: string;
 }
 export class GoogleCallbackQuery {
   @ApiProperty({})
@@ -61,8 +113,10 @@ export class GoogleCallbackQuery {
   @IsString()
   @MinLength(64)
   @MaxLength(64)
+  @Validate(ExactlyOneOAuthResult)
   state!: string;
-  @ApiProperty({})
+  @ApiPropertyOptional({ maxLength: 4096 })
+  @IsOptional()
   @Transform(({ value }: TransformFnParams): unknown =>
     typeof value === "string" ? value.trim() : value,
   )
@@ -70,6 +124,11 @@ export class GoogleCallbackQuery {
   @MinLength(1)
   @MaxLength(4096)
   code!: string;
+  @ApiPropertyOptional({ maxLength: 32 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  error?: string;
 
   // Google adds these fields to successful authorization callbacks. Identity
   // and account linking still use the verified provider response, not metadata.
