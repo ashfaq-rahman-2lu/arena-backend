@@ -7,6 +7,7 @@ import { InfrastructureModule } from "./infrastructure.module";
 import { MatchesModule } from "./matches/matches.module";
 import { PublicViewingModule } from "./public-viewing/public-viewing.module";
 import { TournamentsModule } from "./tournaments/tournaments.module";
+import { FollowingModule } from "./following/following.module";
 @Module({})
 export class AppModule {
   static register(environment: Record<string, unknown>): DynamicModule {
@@ -19,6 +20,7 @@ export class AppModule {
         TournamentsModule,
         MatchesModule,
         PublicViewingModule,
+        FollowingModule,
       ],
     };
   }

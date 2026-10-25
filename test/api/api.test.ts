@@ -1,5 +1,6 @@
 import { INestApplication } from "@nestjs/common";
 import assert from "node:assert/strict";
+import * as argon2 from "argon2";
 import { execFileSync } from "node:child_process";
 import { Server as HttpServer } from "node:http";
 import { Server } from "node:net";
@@ -15,6 +16,7 @@ import { EmailMessage } from "../../src/auth/auth.models";
 import { EmailPort } from "../../src/auth/smtp-email.adapter";
 import { ApiError } from "../../src/common/api-error.dto";
 import { ApplicationError } from "../../src/common/application-error";
+import { hash } from "../../src/auth/crypto";
 import { HttpTransport } from "../../src/common/fetch-http.adapter";
 import { DatabaseService as Db } from "../../src/database/database.service";
 import { required } from "../../src/domain/required";
@@ -36,6 +38,17 @@ function httpServer(application: INestApplication): HttpServer {
   if (!(server instanceof HttpServer))
     throw new Error("Unexpected HTTP server");
   return server as HttpServer;
+}
+function responseCookie(response: RequestResponse, name: string): string {
+  const rawCookies: string | string[] | undefined =
+    response.headers["set-cookie"];
+  const cookies: string[] =
+    typeof rawCookies === "string" ? [rawCookies] : (rawCookies ?? []);
+  const cookie = cookies?.find((value: string): boolean =>
+    value.startsWith(`${name}=`),
+  );
+  if (!cookie) throw new Error(`Missing ${name} cookie`);
+  return cookie.split(";")[0] ?? "";
 }
 let emailFailure = false;
 let profile = {
@@ -87,6 +100,26 @@ const fakeVision: VisionProvider = {
 let app: INestApplication, db: Db, smtp: Server;
 const messages: string[] = [];
 type Agent = ReturnType<typeof request.agent>;
+interface EmailChangeProbe {
+  status: "verification_sent" | "google_confirmation_required";
+  authorizationUrl?: string;
+}
+function emailChangeProbe(value: unknown): EmailChangeProbe {
+  if (!value || typeof value !== "object")
+    throw new Error("Email-change response was not an object");
+  const status: unknown = Reflect.get(value, "status");
+  const authorizationUrl: unknown = Reflect.get(value, "authorizationUrl");
+  if (
+    (status !== "verification_sent" &&
+      status !== "google_confirmation_required") ||
+    (authorizationUrl !== undefined && typeof authorizationUrl !== "string")
+  )
+    throw new Error("Email-change response was malformed");
+  return {
+    status,
+    ...(typeof authorizationUrl === "string" ? { authorizationUrl } : {}),
+  };
+}
 let admin: Agent,
   other: Agent,
   guest: Agent,
@@ -116,7 +149,7 @@ const initial = {
 };
 const send = (
   agent: Agent,
-  method: "post" | "patch",
+  method: "post" | "patch" | "put" | "delete",
   path: string,
   body: unknown,
   token: string = csrf,
@@ -220,6 +253,7 @@ beforeEach(async (): Promise<void> => {
   db = app.get(Db);
   // Clear rounds first so bye references cannot restrict the entrant cascade on repeated runs.
   await db.$transaction([
+    db.oAuthAttempt.deleteMany(),
     db.round.deleteMany(),
     db.tournament.deleteMany(),
     required(db.user).deleteMany(),
@@ -842,14 +876,17 @@ test("Google sign-in and linking require validated state and never link by email
         authuser: "0",
         prompt: "consent",
       })
-      .expect(400);
-    assert.equal(
-      readResponse<ApiError>(invalidState, "ApiError").code,
-      "OAUTH_INVALID",
+      .expect(302);
+    assert.match(
+      String(invalidState.headers.location),
+      /\/auth\/login\?error=google_failed/,
     );
-    start = await google.get(base + "/auth/google").expect(302);
+    start = await google
+      .get(base + "/auth/google")
+      .query({ returnTo: "/t/ABCD1234" })
+      .expect(302);
     state = new URL(start.headers.location).searchParams.get("state");
-    await google
+    const loginCallback = await google
       .get(base + "/auth/google/callback")
       .query({
         state,
@@ -858,6 +895,17 @@ test("Google sign-in and linking require validated state and never link by email
         authuser: "0",
         prompt: "consent",
       })
+      .expect(302);
+    assert.match(loginCallback.headers.location ?? "", /\/t\/ABCD1234$/);
+    assert.equal(
+      await db.oAuthAttempt.findUnique({
+        where: { stateHash: hash(required(state)) },
+      }),
+      null,
+    );
+    await google
+      .get(base + "/auth/google/callback")
+      .query({ state, code: "code" })
       .expect(302);
     assert.equal(
       required(
@@ -879,7 +927,13 @@ test("Google sign-in and linking require validated state and never link by email
     await unlinked
       .get(base + "/auth/google/callback")
       .query({ state, code: "code" })
-      .expect(400);
+      .expect(302)
+      .expect(({ headers }: { headers: Record<string, string> }): void =>
+        assert.match(
+          headers.location ?? "",
+          /\/auth\/login\?error=google_failed/,
+        ),
+      );
     start = await admin
       .get(base + "/auth/google")
       .query({ link: "1" })
@@ -889,12 +943,49 @@ test("Google sign-in and linking require validated state and never link by email
       .get(base + "/auth/google/callback")
       .query({ state, code: "code" })
       .expect(302);
+    assert.equal(
+      await db.oAuthAttempt.findUnique({
+        where: { stateHash: hash(required(state)) },
+      }),
+      null,
+    );
     const info = readResponse<SessionView>(
       await admin.get(base + "/auth/session"),
       "SessionView",
     );
     assert.equal(required(info.user).googleLinked, true);
     csrf = info.csrf;
+    const sharedTournament = await create(admin);
+    const googleLogin = request.agent(httpServer(app));
+    start = await googleLogin.get(base + "/auth/google").expect(302);
+    state = new URL(start.headers.location).searchParams.get("state");
+    await googleLogin
+      .get(base + "/auth/google/callback")
+      .query({ state, code: "code" })
+      .expect(302);
+    const googleAccount = readResponse<SessionView>(
+      await googleLogin.get(base + "/auth/session").expect(200),
+      "SessionView",
+    );
+    assert.equal(googleAccount.user?.id, info.user?.id);
+    await googleLogin
+      .get(`${base}/tournaments/${sharedTournament.id}`)
+      .expect(200);
+    await send(
+      googleLogin,
+      "put",
+      `/following/${sharedTournament.publicId}`,
+      {},
+      googleAccount.csrf,
+    ).expect(204);
+    const sharedFollowing = readResponse<{
+      items: { publicId: string }[];
+      total: number;
+    }>(
+      await googleLogin.get(`${base}/following?page=1&limit=20`).expect(200),
+      "FollowedTournamentPageView",
+    );
+    assert.equal(sharedFollowing.items[0]?.publicId, sharedTournament.publicId);
     await guest
       .get(base + "/auth/google")
       .query({ link: "1" })
@@ -908,9 +999,271 @@ test("Google sign-in and linking require validated state and never link by email
       ).user,
       null,
     );
+    profile = {
+      sub: "google-new",
+      email: "google@example.test",
+      email_verified: true,
+      name: "Google admin",
+    };
+    start = await google.get(base + "/auth/google").expect(302);
+    state = new URL(start.headers.location).searchParams.get("state");
+    await google
+      .get(base + "/auth/google/callback")
+      .query({ state, code: "code" })
+      .expect(302);
+    const googleSession = await session(google);
+    const emailStart = await send(
+      google,
+      "post",
+      "/auth/email-change",
+      { email: "google-updated@example.test" },
+      googleSession,
+    ).expect(201);
+    const emailResult = emailChangeProbe(emailStart.body);
+    assert.equal(emailResult.status, "google_confirmation_required");
+    const authorizationUrl = new URL(required(emailResult.authorizationUrl));
+    const emailState = authorizationUrl.searchParams.get("state");
+    await google
+      .get(base + "/auth/google/callback")
+      .query({ state: emailState, code: "code" })
+      .expect(302)
+      .expect(({ headers }: { headers: Record<string, string> }): void =>
+        assert.match(headers.location ?? "", /google=email_confirmation_sent/),
+      );
+    assert.equal(
+      (await db.user.findUnique({ where: { email: "google@example.test" } }))
+        ?.email,
+      "google@example.test",
+    );
+    const emailToken = required(
+      required(messages.at(-1)).match(/token=([a-f0-9]{64})/),
+    )[1];
+    await send(
+      google,
+      "post",
+      "/auth/email-change/confirm",
+      { token: emailToken },
+      googleSession,
+    ).expect(201);
+    assert.ok(
+      await db.user.findUnique({
+        where: { email: "google-updated@example.test" },
+      }),
+    );
+    assert.equal(
+      readResponse<SessionView>(
+        await google.get(base + "/auth/session").expect(200),
+        "SessionView",
+      ).user,
+      null,
+    );
     await google.get(base + "/tournaments").expect(401);
   } finally {
   }
+});
+test("Google-only users can set a password without losing their account data", async (): Promise<void> => {
+  const google = request.agent(httpServer(app));
+  const start = await google.get(base + "/auth/google").expect(302);
+  const state = new URL(start.headers.location).searchParams.get("state");
+  await google
+    .get(base + "/auth/google/callback")
+    .query({ state, code: "code" })
+    .expect(302);
+  const googleBefore = readResponse<SessionView>(
+    await google.get(`${base}/auth/session`).expect(200),
+    "SessionView",
+  );
+  const googleUserId = required(googleBefore.user).id;
+  await send(
+    google,
+    "post",
+    "/auth/password/setup",
+    {},
+    googleBefore.csrf,
+  ).expect(201);
+  const token = required(
+    required(messages.at(-1)).match(/token=([a-f0-9]{64})/),
+  )[1];
+  const guestAgent = request.agent(httpServer(app));
+  const guestCsrf = await session(guestAgent);
+  await send(
+    guestAgent,
+    "post",
+    "/auth/reset-password",
+    { token, password: "google-password-2026" },
+    guestCsrf,
+  ).expect(201);
+  assert.equal(
+    readResponse<SessionView>(
+      await google.get(`${base}/auth/session`).expect(200),
+      "SessionView",
+    ).user,
+    null,
+  );
+  const passwordLogin = request.agent(httpServer(app));
+  const passwordCsrf = await login(
+    passwordLogin,
+    "google@example.test",
+    "google-password-2026",
+  );
+  assert.equal(
+    readResponse<SessionView>(
+      await passwordLogin.get(`${base}/auth/session`).expect(200),
+      "SessionView",
+    ).user?.id,
+    googleUserId,
+  );
+  const tournament = await create(passwordLogin, initial, passwordCsrf);
+  const googleAgain = request.agent(httpServer(app));
+  const googleStart = await googleAgain.get(base + "/auth/google").expect(302);
+  const googleState = new URL(googleStart.headers.location).searchParams.get(
+    "state",
+  );
+  await googleAgain
+    .get(base + "/auth/google/callback")
+    .query({ state: googleState, code: "code" })
+    .expect(302);
+  const googleAfter = readResponse<SessionView>(
+    await googleAgain.get(`${base}/auth/session`).expect(200),
+    "SessionView",
+  );
+  assert.equal(googleAfter.user?.id, googleUserId);
+  await googleAgain.get(`${base}/tournaments/${tournament.id}`).expect(200);
+  await send(
+    googleAgain,
+    "put",
+    `/following/${tournament.publicId}`,
+    {},
+    googleAfter.csrf,
+  ).expect(204);
+  const followed = readResponse<{
+    items: { publicId: string }[];
+    total: number;
+  }>(
+    await googleAgain.get(`${base}/following?page=1&limit=20`).expect(200),
+    "FollowedTournamentPageView",
+  );
+  assert.equal(followed.items[0]?.publicId, tournament.publicId);
+});
+test("Google linking is bound to the exact initiating session", async (): Promise<void> => {
+  const user = await db.user.create({
+    data: {
+      email: "session-bound@example.test",
+      name: "Session-bound admin",
+      passwordHash: await argon2.hash("session-bound-password", {
+        type: argon2.argon2id,
+      }),
+      verified: true,
+    },
+  });
+  const initiating = request.agent(httpServer(app));
+  await login(initiating, user.email, "session-bound-password");
+  const start = await initiating
+    .get(base + "/auth/google")
+    .query({ link: "1" })
+    .expect(302);
+  const state = new URL(start.headers.location).searchParams.get("state");
+  const oauthCookie = responseCookie(start, "arena_oauth");
+  const secondSession = request.agent(httpServer(app));
+  const secondCsrf = await session(secondSession);
+  const secondLogin = await send(
+    secondSession,
+    "post",
+    "/auth/login",
+    { email: user.email, password: "session-bound-password" },
+    secondCsrf,
+  ).expect(201);
+  const secondCookie = responseCookie(secondLogin, "arena_session");
+  const secondSessionProbe = await request(httpServer(app))
+    .get(base + "/auth/session")
+    .set("Cookie", secondCookie)
+    .expect(200);
+  assert.equal(
+    readResponse<SessionView>(secondSessionProbe, "SessionView").user?.id,
+    user.id,
+  );
+  profile = {
+    sub: "google-session-bound",
+    email: "session-bound-google@example.test",
+    email_verified: true,
+    name: "Session-bound Google",
+  };
+  const callback = await request(httpServer(app))
+    .get(base + "/auth/google/callback")
+    .set("Cookie", `${secondCookie}; ${oauthCookie}`)
+    .query({ state, code: "code" })
+    .expect(302);
+  assert.match(
+    callback.headers.location ?? "",
+    /\/dashboard\?settings=1&google=failed/,
+  );
+  assert.equal(
+    await db.oAuthAttempt.findUnique({
+      where: { stateHash: hash(required(state)) },
+    }),
+    null,
+  );
+  assert.equal(
+    await db.authIdentity.findUnique({
+      where: {
+        provider_subject: {
+          provider: "google",
+          subject: "google-session-bound",
+        },
+      },
+    }),
+    null,
+  );
+});
+test("Google cancellation consumes attempts and preserves a validated return target", async (): Promise<void> => {
+  const google = request.agent(httpServer(app));
+  const start = await google
+    .get(base + "/auth/google")
+    .query({ returnTo: "/t/ABCD1234" })
+    .expect(302);
+  const state = new URL(start.headers.location).searchParams.get("state");
+  const attemptHash = hash(required(state));
+  await google
+    .get(base + "/auth/google/callback")
+    .query({ state, code: "code", error: "access_denied" })
+    .expect(400);
+  const cancelled = await google
+    .get(base + "/auth/google/callback")
+    .query({ state, error: "access_denied" })
+    .expect(302);
+  assert.match(
+    cancelled.headers.location ?? "",
+    /google_cancelled&returnTo=%2Ft%2FABCD1234/,
+  );
+  assert.equal(
+    await db.oAuthAttempt.findUnique({ where: { stateHash: attemptHash } }),
+    null,
+  );
+  await google
+    .get(base + "/auth/google/callback")
+    .query({ state, error: "access_denied" })
+    .expect(302)
+    .expect(({ headers }: { headers: Record<string, string> }): void =>
+      assert.match(headers.location ?? "", /google_failed/),
+    );
+  const expiredStart = await google
+    .get(base + "/auth/google")
+    .query({ returnTo: "/t/ABCD1234" })
+    .expect(302);
+  const expiredState = new URL(expiredStart.headers.location).searchParams.get(
+    "state",
+  );
+  await db.oAuthAttempt.updateMany({
+    where: { stateHash: hash(required(expiredState)) },
+    data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+  await google
+    .get(base + "/auth/google/callback")
+    .query({ state: expiredState, error: "access_denied" })
+    .expect(302)
+    .expect(({ headers }: { headers: Record<string, string> }): void =>
+      assert.match(headers.location ?? "", /google_failed/),
+    );
 });
 test("pagination validates bounds, filters summaries, and returns owner-wide totals", async (): Promise<void> => {
   await create(admin, { ...initial, name: "Unique needle" });
@@ -1669,4 +2022,484 @@ test("public match stats expose saved read-only stats only for a played match in
       `${base}/public/tournaments/${otherTournament.publicId}/matches/${match.id}/stats`,
     )
     .expect(404);
+});
+
+test("users can follow public tournaments without gaining owner access", async (): Promise<void> => {
+  const tournament = await create(admin);
+  await send(
+    other,
+    "put",
+    `/following/${tournament.publicId}`,
+    {},
+    csrf,
+  ).expect(403);
+  await send(
+    other,
+    "put",
+    `/following/${tournament.publicId}`,
+    {},
+    otherCsrf,
+  ).expect(204);
+  await Promise.all([
+    send(
+      other,
+      "put",
+      `/following/${tournament.publicId}`,
+      {},
+      otherCsrf,
+    ).expect(204),
+    send(
+      other,
+      "put",
+      `/following/${tournament.publicId}`,
+      {},
+      otherCsrf,
+    ).expect(204),
+  ]);
+  await send(
+    other,
+    "put",
+    `/following/${tournament.publicId}`,
+    {},
+    otherCsrf,
+  ).expect(204);
+  const page = await other.get(`${base}/following?page=1&limit=20`).expect(200);
+  const followed = readResponse<{
+    items: { publicId: string; name: string }[];
+    total: number;
+  }>(page, "FollowedTournamentPageView");
+  assert.equal(followed.total, 1);
+  assert.equal(followed.items[0]?.publicId, tournament.publicId);
+  await other
+    .get(`${base}/following/${tournament.publicId}`)
+    .expect(200)
+    .expect(({ body }: { body: { following: boolean } }): void =>
+      assert.equal(body.following, true),
+    );
+  await other.get(`${base}/tournaments/${tournament.id}`).expect(403);
+  await send(
+    other,
+    "delete",
+    `/following/${tournament.publicId}`,
+    {},
+    otherCsrf,
+  ).expect(204);
+  await other
+    .get(`${base}/following/${tournament.publicId}`)
+    .expect(200)
+    .expect(({ body }: { body: { following: boolean } }): void =>
+      assert.equal(body.following, false),
+    );
+});
+
+test("profile name edits are reflected by the authenticated session", async (): Promise<void> => {
+  await send(admin, "patch", "/auth/profile", { name: "Renamed admin" }).expect(
+    200,
+  );
+  const response = await admin.get(`${base}/auth/session`).expect(200);
+  assert.equal(
+    readResponse<SessionView>(response, "SessionView").user?.name,
+    "Renamed admin",
+  );
+});
+test("password-confirmed email change verifies once, revokes sessions, and handles conflicts and delivery failures", async (): Promise<void> => {
+  const account = await db.user.findUnique({
+    where: { email: "admin@example.test" },
+  });
+  if (!account) throw new Error("Admin fixture missing");
+  const response = await send(
+    admin,
+    "post",
+    "/auth/email-change",
+    {
+      email: "admin-renamed@example.test",
+      currentPassword: "correct-horse-123",
+    },
+    csrf,
+  ).expect(201);
+  const result = emailChangeProbe(response.body);
+  assert.equal(result.status, "verification_sent");
+  assert.equal(
+    (await db.user.findUnique({ where: { id: account.id } }))?.email,
+    "admin@example.test",
+  );
+  const token = required(
+    required(messages.at(-1)).match(/token=([a-f0-9]{64})/),
+  )[1];
+  await send(
+    admin,
+    "post",
+    "/auth/email-change/confirm",
+    { token },
+    csrf,
+  ).expect(201);
+  await send(
+    admin,
+    "post",
+    "/auth/email-change/confirm",
+    { token },
+    csrf,
+  ).expect(400);
+  assert.equal(
+    readResponse<SessionView>(
+      await admin.get(`${base}/auth/session`).expect(200),
+      "SessionView",
+    ).user,
+    null,
+  );
+  csrf = await login(admin, "admin-renamed@example.test");
+  assert.equal(
+    readResponse<SessionView>(
+      await admin.get(`${base}/auth/session`).expect(200),
+      "SessionView",
+    ).user?.id,
+    account.id,
+  );
+  await send(
+    admin,
+    "post",
+    "/auth/email-change",
+    { email: "other@example.test", currentPassword: "correct-horse-123" },
+    csrf,
+  ).expect(409);
+  await send(
+    admin,
+    "post",
+    "/auth/email-change",
+    {
+      email: "expired@example.test",
+      currentPassword: "correct-horse-123",
+    },
+    csrf,
+  ).expect(201);
+  const expiredToken = required(
+    required(messages.at(-1)).match(/token=([a-f0-9]{64})/),
+  )[1];
+  await db.authToken.updateMany({
+    where: { id: hash(expiredToken) },
+    data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+  await send(
+    admin,
+    "post",
+    "/auth/email-change/confirm",
+    { token: expiredToken },
+    csrf,
+  ).expect(400);
+  emailFailure = true;
+  await send(
+    admin,
+    "post",
+    "/auth/email-change",
+    {
+      email: "undelivered@example.test",
+      currentPassword: "correct-horse-123",
+    },
+    csrf,
+  ).expect(503);
+  emailFailure = false;
+  assert.equal(
+    await db.authToken.count({
+      where: {
+        userId: account.id,
+        purpose: "EMAIL_CHANGE",
+        value: JSON.stringify({
+          email: "undelivered@example.test",
+          previousEmail: "admin-renamed@example.test",
+        }),
+      },
+    }),
+    0,
+  );
+  assert.equal(
+    (await db.user.findUnique({ where: { id: account.id } }))?.email,
+    "admin-renamed@example.test",
+  );
+});
+
+test("OAuth callbacks consume concurrently only once and conflicting identities cannot be linked", async (): Promise<void> => {
+  const google = request.agent(httpServer(app));
+  const start = await google.get(`${base}/auth/google`).expect(302);
+  const state = required(
+    new URL(start.headers.location).searchParams.get("state"),
+  );
+  const oauthCookie = responseCookie(start, "arena_oauth");
+  const callbacks = await Promise.all(
+    [0, 1].map((_index: number): Promise<RequestResponse> =>
+      request(httpServer(app))
+        .get(`${base}/auth/google/callback`)
+        .set("Cookie", oauthCookie)
+        .query({ state, code: "code" })
+        .expect(302),
+    ),
+  );
+  assert.equal(
+    callbacks.filter((result: RequestResponse): boolean =>
+      String(result.headers.location).endsWith("/dashboard"),
+    ).length,
+    1,
+  );
+  assert.equal(
+    callbacks.filter((result: RequestResponse): boolean =>
+      String(result.headers.location).includes("google_failed"),
+    ).length,
+    1,
+  );
+  assert.equal(
+    await db.authIdentity.count({ where: { subject: profile.sub } }),
+    1,
+  );
+  assert.equal(
+    await db.oAuthAttempt.count({ where: { stateHash: hash(state) } }),
+    0,
+  );
+  const link = await admin.get(`${base}/auth/google?link=1`).expect(302);
+  const conflict = await admin
+    .get(`${base}/auth/google/callback`)
+    .query({
+      state: new URL(link.headers.location).searchParams.get("state"),
+      code: "code",
+    })
+    .expect(302);
+  assert.match(String(conflict.headers.location), /settings=1&google=failed/);
+  const adminInfo = readResponse<SessionView>(
+    await admin.get(`${base}/auth/session`),
+    "SessionView",
+  );
+  assert.equal(adminInfo.user?.googleLinked, false);
+});
+
+test("Google email confirmation rejects a different identity and consumes its attempt", async (): Promise<void> => {
+  const google = request.agent(httpServer(app));
+  const loginStart = await google.get(`${base}/auth/google`).expect(302);
+  await google
+    .get(`${base}/auth/google/callback`)
+    .query({
+      state: new URL(loginStart.headers.location).searchParams.get("state"),
+      code: "code",
+    })
+    .expect(302);
+  const token = await session(google);
+  const before = messages.length;
+  const result = await send(
+    google,
+    "post",
+    "/auth/email-change",
+    { email: "target@example.test" },
+    token,
+  ).expect(201);
+  const state = required(
+    new URL(
+      required(emailChangeProbe(result.body).authorizationUrl),
+    ).searchParams.get("state"),
+  );
+  profile = { ...profile, sub: "wrong-subject", email: "wrong@example.test" };
+  await google
+    .get(`${base}/auth/google/callback`)
+    .query({ state, code: "code" })
+    .expect(302)
+    .expect(({ headers }: { headers: Record<string, string> }): void =>
+      assert.match(headers.location ?? "", /google=failed/),
+    );
+  assert.equal(messages.length, before);
+  assert.equal(
+    await db.authToken.count({ where: { purpose: "EMAIL_CHANGE" } }),
+    0,
+  );
+  assert.equal(
+    await db.oAuthAttempt.count({ where: { stateHash: hash(state) } }),
+    0,
+  );
+});
+
+test("following pages isolate users, sort tied follows, filter sensitive fields and cascade deletes", async (): Promise<void> => {
+  const tournaments: TournamentView[] = [];
+  for (let index = 0; index < 3; index++)
+    tournaments.push(
+      await create(admin, { ...initial, name: `Follow ${index}` }),
+    );
+  for (const tournament of tournaments)
+    await send(
+      other,
+      "put",
+      `/following/${tournament.publicId.toLowerCase()}`,
+      {},
+      otherCsrf,
+    ).expect(204);
+  await db.tournamentFollow.updateMany({
+    data: { createdAt: new Date("2026-01-01T00:00:00Z") },
+  });
+  const ordered = [...tournaments].sort(
+    (left: TournamentView, right: TournamentView): number =>
+      left.id.localeCompare(right.id),
+  );
+  const list = readResponse<{ items: { publicId: string }[]; total: number }>(
+    await other.get(`${base}/following?page=1&limit=2`).expect(200),
+    "FollowedTournamentPageView",
+  );
+  assert.deepEqual(
+    list.items.map((item: { publicId: string }): string => item.publicId),
+    ordered.slice(0, 2).map((item: TournamentView): string => item.publicId),
+  );
+  assert.equal(list.total, 3);
+  assert.deepEqual(Object.keys(required(list.items[0])).sort(), [
+    "createdAt",
+    "format",
+    "game",
+    "name",
+    "publicId",
+    "status",
+  ]);
+  const second = readResponse<{ items: { publicId: string }[] }>(
+    await other.get(`${base}/following?page=2&limit=2`).expect(200),
+    "FollowedTournamentPageView",
+  );
+  assert.equal(second.items[0]?.publicId, ordered[2]?.publicId);
+  const isolated = readResponse<{ total: number }>(
+    await admin.get(`${base}/following`).expect(200),
+    "FollowedTournamentPageView",
+  );
+  assert.equal(isolated.total, 0);
+  await guest.get(`${base}/following`).expect(401);
+  await other.get(`${base}/following?limit=101`).expect(400);
+  await send(other, "put", "/following/ZZZZ9999", {}, otherCsrf).expect(404);
+  await db.tournament.delete({ where: { id: required(tournaments[0]).id } });
+  assert.equal(await db.tournamentFollow.count(), 2);
+  const info = readResponse<SessionView>(
+    await other.get(`${base}/auth/session`),
+    "SessionView",
+  );
+  await db.user.delete({ where: { id: required(info.user).id } });
+  assert.equal(await db.tournamentFollow.count(), 0);
+});
+
+test("OAuthAttempt migration default matches Prisma without changing other constraints", async (): Promise<void> => {
+  const attempt = await db.oAuthAttempt.create({
+    data: {
+      stateHash: hash("migration-probe"),
+      action: "LOGIN",
+      expiresAt: new Date(Date.now() + 600000),
+    },
+  });
+  assert.equal(attempt.returnTo, "/dashboard");
+  const columns: { column_default: string | null }[] =
+    await db.$queryRaw`SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='OAuthAttempt' AND column_name='returnTo'`;
+  assert.equal(columns[0]?.column_default, "'/dashboard'::text");
+  const difference = execFileSync(
+    process.execPath,
+    [
+      "node_modules/prisma/build/index.js",
+      "migrate",
+      "diff",
+      "--from-url",
+      required(process.env.TEST_DATABASE_URL),
+      "--to-schema-datamodel",
+      "prisma/schema.prisma",
+      "--script",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.doesNotMatch(difference, /OAuthAttempt|OAuthAction/);
+});
+
+test("email confirmation rechecks uniqueness and rejects concurrent token reuse", async (): Promise<void> => {
+  await send(
+    admin,
+    "post",
+    "/auth/email-change",
+    { email: "reserved@example.test", currentPassword: "correct-horse-123" },
+    csrf,
+  ).expect(201);
+  const token = required(
+    required(messages.at(-1)).match(/token=([a-f0-9]{64})/),
+  )[1];
+  await db.user.create({
+    data: { email: "reserved@example.test", name: "Reserved", verified: true },
+  });
+  await send(
+    admin,
+    "post",
+    "/auth/email-change/confirm",
+    { token },
+    csrf,
+  ).expect(409);
+  assert.ok(
+    await db.user.findUnique({ where: { email: "admin@example.test" } }),
+  );
+  await send(
+    admin,
+    "post",
+    "/auth/email-change",
+    { email: "available@example.test", currentPassword: "correct-horse-123" },
+    csrf,
+  ).expect(201);
+  const freshToken = required(
+    required(messages.at(-1)).match(/token=([a-f0-9]{64})/),
+  )[1];
+  const results = await Promise.all(
+    [0, 1].map((_index: number): Promise<RequestResponse> =>
+      send(
+        admin,
+        "post",
+        "/auth/email-change/confirm",
+        { token: freshToken },
+        csrf,
+      ),
+    ),
+  );
+  assert.deepEqual(
+    results.map((result: RequestResponse): number => result.status).sort(),
+    [201, 400],
+  );
+  assert.equal(
+    await db.authToken.count({ where: { purpose: "EMAIL_CHANGE" } }),
+    0,
+  );
+});
+
+test("OAuth initiation, email delivery and following mutations enforce bounded rate limits", async (): Promise<void> => {
+  for (const action of ["oauth", "email", "following"] as const) {
+    const limited = await createApp({
+      environment: {
+        ...process.env,
+        AUTH_RATE_LIMIT: action === "oauth" ? "1" : "2",
+        GOOGLE_CLIENT_ID: "fake-client",
+        GOOGLE_CLIENT_SECRET: "fake-secret",
+        GOOGLE_CALLBACK_URL:
+          "http://localhost:5173/api/v1/auth/google/callback",
+      },
+      email: fakeEmail,
+      http: fakeHttp,
+      vision: fakeVision,
+    });
+    await limited.init();
+    try {
+      const agent = request.agent(httpServer(limited));
+      if (action === "oauth") {
+        await agent.get(`${base}/auth/google`).expect(302);
+        await agent.get(`${base}/auth/google`).expect(429);
+      } else {
+        const token = await login(agent, "admin@example.test");
+        const tournament = await create();
+        const path =
+          action === "email"
+            ? "/auth/email-change"
+            : `/following/${tournament.publicId}`;
+        const method = action === "email" ? "post" : "put";
+        const body =
+          action === "email"
+            ? {
+                email: "limited@example.test",
+                currentPassword: "correct-horse-123",
+              }
+            : {};
+        await send(agent, method, path, body, token).expect(
+          action === "email" ? 201 : 204,
+        );
+        await send(agent, method, path, body, token).expect(429);
+      }
+    } finally {
+      await limited.close();
+    }
+  }
 });

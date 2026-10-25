@@ -1,207 +1,273 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
+
+enum OAuthAction {
+  LOGIN
+  LINK
+  EMAIL_CHANGE
+}
+
 model User {
-  id String @id @default(uuid())
-  email String @unique
-  name String
-  passwordHash String?
-  verified Boolean @default(false)
-  createdAt DateTime @default(now())
-  identities AuthIdentity[]
-  sessions Session[]
-  tokens AuthToken[]
-  tournaments Tournament[]
-  statSlots TournamentStatSlot[]
+  id            String               @id @default(uuid())
+  email         String               @unique
+  name          String
+  passwordHash  String?
+  verified      Boolean              @default(false)
+  createdAt     DateTime             @default(now())
+  identities    AuthIdentity[]
+  follows       TournamentFollow[]
+  sessions      Session[]
+  tokens        AuthToken[]
+  tournaments   Tournament[]
+  statSlots     TournamentStatSlot[]
+  oauthAttempts OAuthAttempt[]
 }
+
 model AuthIdentity {
-  id String @id @default(uuid())
+  id       String @id @default(uuid())
   provider String
-  subject String
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject  String
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, subject])
   @@unique([userId, provider])
 }
+
 model Session {
-  id String @id
-  userId String
-  csrf String
-  expiresAt DateTime
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String         @id
+  userId        String
+  csrf          String
+  expiresAt     DateTime
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthAttempts OAuthAttempt[]
+
   @@index([expiresAt])
 }
+
+model OAuthAttempt {
+  id            String      @id @default(uuid())
+  stateHash     String      @unique
+  action        OAuthAction
+  userId        String?
+  sessionId     String?
+  proposedEmail String?
+  returnTo      String      @default("/dashboard")
+  expiresAt     DateTime
+  user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session       Session?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
 model AuthToken {
-  id String @id
-  userId String
-  purpose String
+  id        String   @id
+  userId    String
+  purpose   String
+  value     String?
   expiresAt DateTime
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([expiresAt])
 }
+
 model Tournament {
-  id String @id @default(uuid())
-  publicId String @unique
-  ownerId String
-  name String
-  game String
-  format String
-  status String @default("DRAFT")
-  currentStage String @default("SETUP")
-  knockoutLegs Int @default(1)
-  knockoutFinalLegs Int @default(1)
-  legs Int @default(1)
-  winPoints Int @default(3)
-  drawPoints Int @default(1)
-  lossPoints Int @default(0)
-  revision Int @default(0)
-  statsEnabled Boolean @default(false)
-  championId String?
-  createdAt DateTime @default(now())
-  owner User @relation(fields: [ownerId], references: [id])
-  entrants Entrant[]
-  groups Group[]
-  matches Match[]
-  rounds Round[]
-  ties TieResolution[]
-  qualification QualificationDecision?
-  knockoutTies KnockoutTie[]
-  history ResultRevision[]
-  statSlot TournamentStatSlot?
-  @@index([ownerId, createdAt])
+  id                String                 @id @default(uuid())
+  publicId          String                 @unique
+  ownerId           String
+  name              String
+  game              String
+  format            String
+  status            String                 @default("DRAFT")
+  currentStage      String                 @default("SETUP")
+  knockoutLegs      Int                    @default(1)
+  knockoutFinalLegs Int                    @default(1)
+  legs              Int                    @default(1)
+  winPoints         Int                    @default(3)
+  drawPoints        Int                    @default(1)
+  lossPoints        Int                    @default(0)
+  revision          Int                    @default(0)
+  statsEnabled      Boolean                @default(false)
+  championId        String?
+  createdAt         DateTime               @default(now())
+  owner             User                   @relation(fields: [ownerId], references: [id])
+  entrants          Entrant[]
+  groups            Group[]
+  matches           Match[]
+  rounds            Round[]
+  ties              TieResolution[]
+  qualification     QualificationDecision?
+  knockoutTies      KnockoutTie[]
+  history           ResultRevision[]
+  statSlot          TournamentStatSlot?
+  followers         TournamentFollow[]
+
   @@unique([ownerId, id])
+  @@index([ownerId, createdAt])
 }
-model Entrant {
-  id String @id @default(uuid())
+
+model TournamentFollow {
+  id           String     @id @default(uuid())
+  userId       String
   tournamentId String
-  name String
-  nameKey String
-  aliases String[]
-  groupId String?
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  homeMatches Match[] @relation("home")
-  awayMatches Match[] @relation("away")
-  byes Bye[]
+  createdAt    DateTime   @default(now())
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tournamentId])
+  @@index([userId, createdAt, tournamentId])
+}
+
+model Entrant {
+  id           String     @id @default(uuid())
+  tournamentId String
+  name         String
+  nameKey      String
+  aliases      String[]
+  groupId      String?
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  group        Group?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  homeMatches  Match[]    @relation("home")
+  awayMatches  Match[]    @relation("away")
+  byes         Bye[]
+
   @@unique([tournamentId, nameKey])
   @@unique([tournamentId, id])
 }
+
 model Group {
-  id String @id @default(uuid())
-  tournamentId String
-  name String
+  id             String     @id @default(uuid())
+  tournamentId   String
+  name           String
   qualifierCount Int
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  entrants Entrant[]
+  tournament     Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entrants       Entrant[]
+
   @@unique([tournamentId, name])
 }
+
 model Round {
-  id String @id @default(uuid())
+  id           String        @id @default(uuid())
   tournamentId String
-  number Int
-  method String @default("MANUAL")
-  ties KnockoutTie[]
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  matches Match[]
-  byes Bye[]
+  number       Int
+  method       String        @default("MANUAL")
+  ties         KnockoutTie[]
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matches      Match[]
+  byes         Bye[]
+
   @@unique([tournamentId, number])
   @@unique([tournamentId, id])
 }
+
 model Match {
-  id String @id @default(uuid())
-  tournamentId String
-  stage String
-  scope String
-  round Int
-  leg Int
-  homeId String
-  awayId String
-  pairingKey String
-  knockoutTieId String?
-  knockoutTie KnockoutTie? @relation(fields: [tournamentId, knockoutTieId], references: [tournamentId, id], onDelete: Cascade)
+  id              String       @id @default(uuid())
+  tournamentId    String
+  stage           String
+  scope           String
+  round           Int
+  leg             Int
+  homeId          String
+  awayId          String
+  pairingKey      String
+  knockoutTieId   String?
+  knockoutTie     KnockoutTie? @relation(fields: [tournamentId, knockoutTieId], references: [tournamentId, id], onDelete: Cascade)
   knockoutRoundId String?
-  homeScore Int?
-  awayScore Int?
-  homeTiebreak Int?
-  awayTiebreak Int?
-  winnerId String?
-  revision Int @default(0)
-  stats Json?
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  home Entrant @relation("home", fields: [homeId], references: [id])
-  away Entrant @relation("away", fields: [awayId], references: [id])
-  knockoutRound Round? @relation(fields: [tournamentId, knockoutRoundId], references: [tournamentId, id], onDelete: Cascade, map: "round_same_tournament")
+  homeScore       Int?
+  awayScore       Int?
+  homeTiebreak    Int?
+  awayTiebreak    Int?
+  winnerId        String?
+  revision        Int          @default(0)
+  stats           Json?
+  tournament      Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  home            Entrant      @relation("home", fields: [homeId], references: [id])
+  away            Entrant      @relation("away", fields: [awayId], references: [id])
+  knockoutRound   Round?       @relation(fields: [tournamentId, knockoutRoundId], references: [tournamentId, id], onDelete: Cascade, map: "round_same_tournament")
+
   @@unique([tournamentId, stage, scope, round, leg, pairingKey])
   @@unique([knockoutTieId, leg])
   @@index([tournamentId, stage])
 }
+
 model TournamentStatSlot {
-  id String @id @default(uuid())
-  ownerId String
-  tournamentId String @unique
-  slot Int
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  tournament Tournament @relation(fields: [ownerId, tournamentId], references: [ownerId, id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  ownerId      String
+  tournamentId String     @unique
+  slot         Int
+  owner        User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tournament   Tournament @relation(fields: [ownerId, tournamentId], references: [ownerId, id], onDelete: Cascade)
+
   @@unique([ownerId, slot])
   @@unique([ownerId, tournamentId])
   @@index([ownerId])
 }
+
 model Bye {
-  slot Int @default(0)
+  slot         Int     @default(0)
   tournamentId String
-  id String @id @default(uuid())
-  roundId String
-  entrantId String
-  round Round @relation(fields: [tournamentId, roundId], references: [tournamentId, id], onDelete: Cascade, map: "bye_round_same_tournament")
-  entrant Entrant @relation(fields: [tournamentId, entrantId], references: [tournamentId, id], map: "bye_entrant_same_tournament")
+  id           String  @id @default(uuid())
+  roundId      String
+  entrantId    String
+  round        Round   @relation(fields: [tournamentId, roundId], references: [tournamentId, id], onDelete: Cascade, map: "bye_round_same_tournament")
+  entrant      Entrant @relation(fields: [tournamentId, entrantId], references: [tournamentId, id], map: "bye_entrant_same_tournament")
+
   @@unique([roundId, entrantId])
 }
+
 model TieResolution {
-  id String @id @default(uuid())
+  id           String     @id @default(uuid())
   tournamentId String
-  scope String
-  signature String
-  order String[]
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  scope        String
+  signature    String
+  order        String[]
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
   @@unique([tournamentId, scope, signature])
 }
+
 model QualificationDecision {
-  id String @id @default(uuid())
-  tournamentId String @unique
-  entrantIds String[]
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  tournamentId String     @unique
+  entrantIds   String[]
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 }
+
 model ResultRevision {
-  id String @id @default(uuid())
+  id           String     @id @default(uuid())
   tournamentId String
-  matchId String?
-  actorId String
-  action String
-  before Json
-  after Json
-  createdAt DateTime @default(now())
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchId      String?
+  actorId      String
+  action       String
+  before       Json
+  after        Json
+  createdAt    DateTime   @default(now())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
   @@index([tournamentId, createdAt])
 }
 
 model KnockoutTie {
-  id String @id @default(uuid())
+  id           String     @id @default(uuid())
   tournamentId String
-  roundId String
-  slot Int
-  homeId String
-  awayId String
-  legs Int
+  roundId      String
+  slot         Int
+  homeId       String
+  awayId       String
+  legs         Int
   homeTiebreak Int?
   awayTiebreak Int?
-  winnerId String?
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  round Round @relation(fields: [tournamentId, roundId], references: [tournamentId, id], onDelete: Cascade)
-  matches Match[]
+  winnerId     String?
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  round        Round      @relation(fields: [tournamentId, roundId], references: [tournamentId, id], onDelete: Cascade)
+  matches      Match[]
+
   @@unique([tournamentId, id])
   @@unique([roundId, slot])
 }
