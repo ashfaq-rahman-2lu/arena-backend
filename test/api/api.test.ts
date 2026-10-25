@@ -1561,6 +1561,13 @@ test("stats quota is serialized, archiving preserves results and releases a slot
     await score(t, match, 2, 1, {
       stats: [
         { key: "shots", label: "Shots", unit: "count", home: 0, away: 7 },
+        {
+          key: "shotsOnTarget",
+          label: "Shots on target",
+          unit: "count",
+          home: 0,
+          away: 3,
+        },
       ],
     }).expect(200),
     "TournamentView",

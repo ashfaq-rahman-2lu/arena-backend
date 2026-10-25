@@ -30,6 +30,13 @@ const statLabels: Record<MatchStat["key"], string> = {
   saves: "Saves",
 };
 
+const pairedStatKeys: Partial<Record<MatchStat["key"], MatchStat["key"]>> = {
+  shots: "shotsOnTarget",
+  shotsOnTarget: "shots",
+  passes: "successfulPasses",
+  successfulPasses: "passes",
+};
+
 export function aggregateTeamStats(
   matches: TeamStatMatch[],
   playedMatches: number,
@@ -52,6 +59,13 @@ export function aggregateTeamStats(
   return keys.map((key: MatchStat["key"]): TeamStatValue => {
     const values: number[] = matches.flatMap(
       (match: TeamStatMatch): number[] => {
+        const pairedKey: MatchStat["key"] | undefined = pairedStatKeys[key];
+        if (pairedKey !== undefined) {
+          const pairedValue: number | null | undefined = match.stats.find(
+            (stat: MatchStat): boolean => stat.key === pairedKey,
+          )?.[match.side];
+          if (pairedValue === null || pairedValue === undefined) return [];
+        }
         const value = match.stats.find(
           (stat: MatchStat): boolean => stat.key === key,
         )?.[match.side];
