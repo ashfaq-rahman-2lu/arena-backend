@@ -271,6 +271,27 @@ export class TournamentsRepository {
       ),
     };
   }
+  async publicMatchStats(
+    publicId: string,
+    matchId: string,
+  ): Promise<MatchStat[]> {
+    const match = await this.db.match.findFirst({
+      where: {
+        id: matchId,
+        homeScore: { not: null },
+        awayScore: { not: null },
+        tournament: {
+          is: {
+            publicId: publicId.trim().toUpperCase(),
+            statsEnabled: true,
+          },
+        },
+      },
+      select: { stats: true },
+    });
+    if (!match) throw new ApplicationError("NOT_FOUND", 404, "Match not found");
+    return match.stats === null ? [] : matchStats.parse(match.stats);
+  }
   async publicView(publicId: string): Promise<TournamentAggregate> {
     const t = await this.db.tournament.findUnique({
       where: { publicId: publicId.trim().toUpperCase() },

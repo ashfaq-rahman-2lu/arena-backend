@@ -1632,3 +1632,41 @@ test("stats quota is serialized, archiving preserves results and releases a slot
   );
   await create(admin, { ...initial, statsEnabled: true });
 });
+
+test("public match stats expose saved read-only stats only for a played match in that tournament", async (): Promise<void> => {
+  const tournament = await start(
+    await create(admin, { ...initial, statsEnabled: true }),
+  );
+  const match = required(tournament.matches[0]);
+  const savedStats = [
+    {
+      key: "possession",
+      label: "Possession",
+      unit: "percent",
+      home: 55,
+      away: 45,
+    },
+    { key: "shots", label: "Shots", unit: "count", home: 11, away: 7 },
+  ] as const;
+  await score(tournament, match, 2, 1, { stats: savedStats }).expect(200);
+
+  const response = await guest
+    .get(
+      `${base}/public/tournaments/${tournament.publicId}/matches/${match.id}/stats`,
+    )
+    .expect(200);
+  assert.deepEqual(
+    readResponse<{ stats: typeof savedStats }>(
+      response,
+      "PublicMatchStatsView",
+    ),
+    { stats: savedStats },
+  );
+
+  const otherTournament = await start(await create(admin, initial));
+  await guest
+    .get(
+      `${base}/public/tournaments/${otherTournament.publicId}/matches/${match.id}/stats`,
+    )
+    .expect(404);
+});
