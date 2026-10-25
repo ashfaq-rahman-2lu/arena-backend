@@ -32,7 +32,7 @@ import {
   StatMatchRecord,
   aggregateTeamStats,
 } from "../stats/team-stats.models";
-import { TeamStatsView } from "../stats/team-stats.dto";
+import { PublicMatchStatsView, TeamStatsView } from "../stats/team-stats.dto";
 import {
   EntrantSetup,
   EntrantsAddition,
@@ -265,6 +265,15 @@ export class TournamentsService {
           };
         },
       ),
+    };
+  }
+
+  async publicMatchStats(
+    publicId: string,
+    matchId: string,
+  ): Promise<PublicMatchStatsView> {
+    return {
+      stats: await this.repository.publicMatchStats(publicId, matchId),
     };
   }
 

@@ -4116,6 +4116,124 @@
         ]
       }
     },
+    "/api/v1/public/tournaments/{publicId}/matches/{matchId}/stats": {
+      "get": {
+        "operationId": "PublicViewingController_matchStats",
+        "parameters": [
+          {
+            "name": "publicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "matchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicMatchStatsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or competition rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ownership or CSRF denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict or reset confirmation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Integration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/api/v1/public/tournaments/{publicId}": {
       "get": {
         "operationId": "PublicViewingController_view",
@@ -6290,6 +6408,68 @@
         "required": [
           "enabled",
           "teams"
+        ]
+      },
+      "MatchStatView": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "possession",
+              "shots",
+              "shotsOnTarget",
+              "fouls",
+              "offsides",
+              "cornerKicks",
+              "freeKicks",
+              "passes",
+              "successfulPasses",
+              "crosses",
+              "interceptions",
+              "tackles",
+              "saves"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "home": {
+            "type": "number",
+            "nullable": true
+          },
+          "away": {
+            "type": "number",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "count"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "home",
+          "away",
+          "unit"
+        ]
+      },
+      "PublicMatchStatsView": {
+        "type": "object",
+        "properties": {
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchStatView"
+            }
+          }
+        },
+        "required": [
+          "stats"
         ]
       },
       "HealthView": {

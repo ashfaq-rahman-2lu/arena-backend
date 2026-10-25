@@ -1,8 +1,14 @@
-import { BadRequestException, Controller, Get, Param } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+} from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { Public } from "../auth/http-session";
 import { TournamentView } from "../tournaments/tournament-response.dto";
-import { TeamStatsView } from "../stats/team-stats.dto";
+import { PublicMatchStatsView, TeamStatsView } from "../stats/team-stats.dto";
 import { HealthView } from "./health-response.dto";
 import { PublicViewingService } from "./public-viewing.service";
 @ApiTags("public")
@@ -16,6 +22,16 @@ export class PublicViewingController {
     if (!/^[A-Z0-9]{8,10}$/i.test(publicId))
       throw new BadRequestException("Enter a valid public tournament ID");
     return this.viewing.stats(publicId);
+  }
+  @Get("public/tournaments/:publicId/matches/:matchId/stats")
+  @ApiOkResponse({ type: PublicMatchStatsView })
+  matchStats(
+    @Param("publicId") publicId: string,
+    @Param("matchId", new ParseUUIDPipe()) matchId: string,
+  ): Promise<PublicMatchStatsView> {
+    if (!/^[A-Z0-9]{8,10}$/i.test(publicId))
+      throw new BadRequestException("Enter a valid public tournament ID");
+    return this.viewing.matchStats(publicId, matchId);
   }
   @Get("public/tournaments/:publicId")
   @ApiOkResponse({ type: TournamentView })
