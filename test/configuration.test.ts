@@ -40,3 +40,48 @@ test("OCR timeout accepts a deployment override", (): void => {
     45000,
   );
 });
+
+const brevoEnvironment: Record<string, unknown> = {
+  ...valid,
+  SMTP_HOST: "smtp-relay.brevo.com",
+  SMTP_PORT: "2525",
+  SMTP_SECURE: "false",
+  SMTP_USER: "test-smtp-login",
+  SMTP_PASSWORD: "test-smtp-key",
+  MAIL_FROM: "Arena <noreply@example.test>",
+};
+
+test("Brevo configuration maps SMTP credentials and port 2525 without implicit TLS", (): void => {
+  assert.deepEqual(validateConfiguration(brevoEnvironment).smtp, {
+    host: "smtp-relay.brevo.com",
+    port: 2525,
+    secure: false,
+    user: "test-smtp-login",
+    password: "test-smtp-key",
+    from: "Arena <noreply@example.test>",
+  });
+});
+
+for (const patch of [
+  { SMTP_USER: "", SMTP_PASSWORD: "" },
+  { SMTP_USER: " ", SMTP_PASSWORD: " " },
+  { MAIL_FROM: undefined },
+]) {
+  test(`Brevo startup rejects missing account settings: ${Object.keys(patch).join(",")}`, (): void => {
+    assert.throws(
+      (): unknown => validateConfiguration({ ...brevoEnvironment, ...patch }),
+      /Brevo requires SMTP_USER, SMTP_PASSWORD, and an explicit MAIL_FROM/,
+    );
+  });
+}
+
+test("local Mailpit remains available without SMTP authentication", (): void => {
+  const config = validateConfiguration({
+    ...valid,
+    SMTP_HOST: "127.0.0.1",
+    SMTP_PORT: "1025",
+  });
+  assert.equal(config.smtp?.user, null);
+  assert.equal(config.smtp?.password, null);
+  assert.equal(config.smtp?.from, "Arena <noreply@arena.local>");
+});
