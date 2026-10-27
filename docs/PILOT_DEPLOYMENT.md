@@ -28,7 +28,37 @@ Once Render supplies the `https://YOUR-API.onrender.com` address, set it as the 
 
 ## Pilot authentication and optional integrations
 
-Render Free blocks outbound SMTP ports 25, 465, and 587. Keep SMTP variables unset unless you have verified an allowed alternative. Email/password registration and reset require real delivery; disabling email does not bypass verification. A future HTTPS email adapter would be a separate provider decision.
+Production account emails use the existing SMTP adapter with Brevo on port 2525, an alternative to Render Free's blocked outbound SMTP ports 25, 465, and 587. Email/password registration, password setup/reset, and email changes require real delivery; Google sign-in alone does not configure email. No new provider SDK or frontend deployment change is needed.
+
+### Brevo account email
+
+1. Create a Brevo account and enable transactional sending. In **SMTP & API → SMTP**, copy the SMTP login and generate an SMTP key. Use the SMTP key rather than a Brevo API key or account password.
+2. In **Senders, Domains & Dedicated IPs**, add and verify the exact sender address you want to use. For a branded sender, authenticate a domain you own with Brevo's DNS records. A sender on Gmail or an unauthenticated domain may be replaced with a `brevosend.com` sender address; this does not change Arena's password-reset link.
+3. In **Render → arena-api → Environment**, configure the following values on the API service:
+
+   ```env
+   SMTP_HOST=smtp-relay.brevo.com
+   SMTP_PORT=2525
+   SMTP_SECURE=false
+   SMTP_USER=YOUR_BREVO_SMTP_LOGIN
+   SMTP_PASSWORD=YOUR_BREVO_SMTP_KEY
+   MAIL_FROM=Arena <YOUR_VERIFIED_SENDER_EMAIL>
+   ```
+
+   Replace the three `YOUR_...` values with your account settings. Enter the values without surrounding quotes in Render. Keep credentials out of Git and frontend variables. Do not use `127.0.0.1`, `mailpit`, port `1025`, or the local `arena.local` sender for the deployment. `SMTP_SECURE=false` selects a connection that can upgrade with STARTTLS instead of implicit TLS; it does not disable Nodemailer's automatic STARTTLS negotiation.
+4. Save the environment and redeploy/restart the API. New Blueprint deployments prompt for `SMTP_USER`, `SMTP_PASSWORD`, and `MAIL_FROM` via `sync: false`. For an existing Blueprint or manually created service, enter these values directly in Render; syncing the file alone does not fill them. Startup rejects a Brevo host without credentials or an explicit `MAIL_FROM`, instead of waiting for the first password-email request to fail.
+5. After deployment, request **Set password by email** from a signed-in account without a password. Confirm delivery in Brevo's transactional email logs and the recipient inbox, then use the link on the Pages site. Successful HTTP acceptance does not by itself prove inbox delivery. Automated tests use fake email delivery and never send real messages.
+
+Local `.env` and `compose.yaml` continue using Mailpit at port 1025 with its inbox at `http://localhost:8025`. No live SMTP login is required locally. To run an explicitly Google-only deployment instead, remove all SMTP values; the integration remains optional, but email-dependent account actions will not work.
+
+References:
+
+- [Brevo SMTP credentials](https://developers.brevo.com/docs/smtp-integration)
+- [Brevo alternative SMTP port 2525](https://help.brevo.com/hc/en-us/articles/10905415650322-Which-SMTP-port-should-I-use-Port-587-465-or-2525)
+- [Brevo sender-domain authentication and address replacement](https://help.brevo.com/hc/en-us/articles/16045394674066-Troubleshooting-Domain-authentication)
+- [Render environment variables and secret values](https://render.com/docs/blueprint-spec#environment-variables)
+
+### Google sign-in
 
 For a pilot without an email service, configure the existing Google sign-in integration:
 

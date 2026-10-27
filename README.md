@@ -45,6 +45,8 @@ Supply production settings through the deployment environment: `NODE_ENV=product
 
 Frontend and API may use sibling HTTPS subdomains, e.g. `app.example.com` and `api.example.com`. Signed HttpOnly cookies use `SameSite=Lax`; credentialed CORS permits only `FRONTEND_URL`. If hosts have different root domains, route `/api` through the frontend's ingress to the separately deployed API to keep browser cookies same-site. Arbitrary cross-site cookie support is not enabled.
 
+Production account emails use Brevo SMTP on port 2525. Follow the [Brevo setup steps](docs/PILOT_DEPLOYMENT.md#brevo-account-email) to supply the SMTP login, SMTP key, and verified sender in Render. The blueprint declares those account-specific values with `sync: false`; existing services need them entered manually in Render before redeploying. Startup rejects a Brevo host without credentials or an explicit sender. Local development continues using Mailpit; do not copy the local mail host or `arena.local` sender into production.
+
 Set `GOOGLE_CALLBACK_URL` to the API's public callback, e.g. `https://api.example.com/api/v1/auth/google/callback`, and register that exact URI with Google. After callback, the API redirects to `FRONTEND_URL/dashboard`. Google accounts are linked only through explicit authenticated linking.
 
 Keep `TRUST_PROXY=false` for direct access. Enable it only behind the trusted ingress; this API trusts one proxy hop. Auth limits default to 20 requests/minute/IP and extraction to 5/minute/admin.

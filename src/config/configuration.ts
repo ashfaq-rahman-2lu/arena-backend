@@ -94,6 +94,13 @@ export function validateConfiguration(
   )
     throw new Error("Incomplete SMTP credentials");
   if (
+    value.SMTP_HOST?.toLowerCase() === "smtp-relay.brevo.com" &&
+    (!value.SMTP_USER?.trim() || !value.SMTP_PASSWORD?.trim() || !env.MAIL_FROM)
+  )
+    throw new Error(
+      "Brevo requires SMTP_USER, SMTP_PASSWORD, and an explicit MAIL_FROM",
+    );
+  if (
     (value.GOOGLE_CLIENT_ID || value.GOOGLE_CLIENT_SECRET) &&
     (!value.GOOGLE_CLIENT_ID ||
       !value.GOOGLE_CLIENT_SECRET ||
