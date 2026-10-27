@@ -51,6 +51,10 @@ Set `GOOGLE_CALLBACK_URL` to the API's public callback, e.g. `https://api.exampl
 
 Keep `TRUST_PROXY=false` for direct access. Enable it only behind the trusted ingress; this API trusts one proxy hop. Auth limits default to 20 requests/minute/IP and extraction to 5/minute/admin.
 
+## Password requirements
+
+Passwords must contain 8–128 characters (previously 10–128). This applies to registration, login, password setup/reset, password changes, and current-password confirmation for email changes. No uppercase, lowercase, number, or symbol requirement is enforced.
+
 ## API contract handoff
 
 ```sh
