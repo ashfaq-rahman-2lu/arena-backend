@@ -35,9 +35,9 @@ export class EmailInput {
   email!: string;
 }
 export class LoginInput extends EmailInput {
-  @ApiProperty({ minLength: 10, maxLength: 128 })
+  @ApiProperty({ minLength: 8, maxLength: 128 })
   @IsString()
-  @MinLength(10)
+  @MinLength(8)
   @MaxLength(128)
   password!: string;
 }
@@ -62,7 +62,11 @@ export class TokenInput {
   token!: string;
 }
 export class ResetInput extends TokenInput {
-  @ApiProperty({}) @IsString() @MinLength(10) @MaxLength(128) password!: string;
+  @ApiProperty({ minLength: 8, maxLength: 128 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password!: string;
 }
 export class ProfileUpdateInput {
   @ApiProperty({ minLength: 1, maxLength: 80 })
@@ -75,22 +79,22 @@ export class ProfileUpdateInput {
   name!: string;
 }
 export class PasswordChangeInput {
-  @ApiProperty({ minLength: 10, maxLength: 128 })
+  @ApiProperty({ minLength: 8, maxLength: 128 })
   @IsString()
-  @MinLength(10)
+  @MinLength(8)
   @MaxLength(128)
   currentPassword!: string;
-  @ApiProperty({ minLength: 10, maxLength: 128 })
+  @ApiProperty({ minLength: 8, maxLength: 128 })
   @IsString()
-  @MinLength(10)
+  @MinLength(8)
   @MaxLength(128)
   password!: string;
 }
 export class EmailChangeInput extends EmailInput {
-  @ApiPropertyOptional({ minLength: 10, maxLength: 128 })
+  @ApiPropertyOptional({ minLength: 8, maxLength: 128 })
   @IsOptional()
   @IsString()
-  @MinLength(10)
+  @MinLength(8)
   @MaxLength(128)
   currentPassword?: string;
 }
