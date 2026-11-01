@@ -4,6 +4,26 @@ import { createApp } from "../src/app";
 import { offlineEnvironment } from "../src/config/configuration";
 import { documentation } from "../src/swagger";
 
+test("every documented response declares the request correlation header", async (): Promise<void> => {
+  const app = await createApp({ environment: offlineEnvironment });
+  try {
+    const document = documentation(app);
+    for (const item of Object.values(document.paths)) {
+      for (const method of ["get", "post", "patch", "put", "delete"] as const) {
+        for (const response of Object.values(item[method]?.responses ?? {})) {
+          assert.ok(
+            response &&
+              "headers" in response &&
+              response.headers?.["X-Request-ID"],
+          );
+        }
+      }
+    }
+  } finally {
+    await app.close();
+  }
+});
+
 test("Swagger references defined security schemes and requires cookie plus CSRF for protected mutations", async (): Promise<void> => {
   const app = await createApp({ environment: offlineEnvironment });
   try {

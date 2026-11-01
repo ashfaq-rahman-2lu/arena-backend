@@ -3,21 +3,32 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
-  Inject,
   Injectable,
-  Logger,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { Request, Response } from "express";
-import { randomUUID } from "node:crypto";
+import { Response } from "express";
 import { RuleError } from "../domain/engine";
 import { ApplicationError, ErrorCode } from "./application-error";
+import { RequestContextService } from "./request-context.service";
+import { RequestErrorType } from "./request-context.models";
 export interface ApiErrorModel {
   statusCode: number;
   code: ErrorCode;
   message: string;
 }
 export function mapApiError(error: unknown): ApiErrorModel {
+  if (
+    error instanceof Error &&
+    "type" in error &&
+    error.type === "entity.too.large" &&
+    "status" in error &&
+    error.status === 413
+  )
+    return {
+      statusCode: 413,
+      code: "VALIDATION_FAILED",
+      message: "Request body too large",
+    };
   if (error instanceof ApplicationError)
     return {
       statusCode: error.statusCode,
@@ -71,27 +82,26 @@ export function mapApiError(error: unknown): ApiErrorModel {
     message: "Something went wrong. Please retry.",
   };
 }
+function errorType(error: unknown): RequestErrorType {
+  if (error instanceof ApplicationError) return "ApplicationError";
+  if (error instanceof HttpException) return "HttpException";
+  if (error instanceof Prisma.PrismaClientKnownRequestError)
+    return "PrismaError";
+  if (error instanceof SyntaxError) return "SyntaxError";
+  return error instanceof Error ? "Error" : "unknown";
+}
 @Injectable()
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
-  constructor(@Inject(Logger) private readonly logger: Logger) {}
+  constructor(private readonly context: RequestContextService) {}
   catch(error: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
-    const request = host.switchToHttp().getRequest<Request>();
-    const requestId =
-      typeof request.headers["x-request-id"] === "string" &&
-      /^[\w-]{1,100}$/.test(request.headers["x-request-id"])
-        ? request.headers["x-request-id"]
-        : randomUUID();
     const mapped = mapApiError(error);
-    response.setHeader("X-Request-ID", requestId);
-    if (mapped.statusCode >= 500)
-      this.logger.error({
-        event: "request_failed",
-        requestId,
-        code: mapped.code,
-        errorType: error instanceof Error ? error.name : "unknown",
-      });
+    const context = this.context.current();
+    if (context) {
+      context.errorCode = mapped.code;
+      context.errorType = errorType(error);
+    }
     response.status(mapped.statusCode).json(mapped);
   }
 }

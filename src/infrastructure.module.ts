@@ -5,6 +5,8 @@ import "reflect-metadata";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
 import { ApplicationLoggerService } from "./common/application-logger.service";
 import { FetchHttpAdapter, HttpTransport } from "./common/fetch-http.adapter";
+import { RequestContextService } from "./common/request-context.service";
+import { RequestLoggingService } from "./common/request-logging.service";
 import { validateConfiguration } from "./config/configuration";
 import { ConfigurationService } from "./config/configuration.service";
 @Global()
@@ -26,6 +28,8 @@ export class InfrastructureModule {
       ],
       providers: [
         ConfigurationService,
+        RequestContextService,
+        RequestLoggingService,
         ApplicationLoggerService,
         { provide: Logger, useExisting: ApplicationLoggerService },
         ApiExceptionFilter,
@@ -33,6 +37,8 @@ export class InfrastructureModule {
       ],
       exports: [
         ConfigurationService,
+        RequestContextService,
+        RequestLoggingService,
         Logger,
         ApiExceptionFilter,
         HttpTransport,

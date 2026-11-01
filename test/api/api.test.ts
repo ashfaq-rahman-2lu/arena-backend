@@ -6,6 +6,7 @@ import { Server as HttpServer } from "node:http";
 import { Server } from "node:net";
 import { afterEach, before, beforeEach, test } from "node:test";
 import sharp from "sharp";
+import { z } from "zod";
 import request, {
   Response as RequestResponse,
   Test as RequestTest,
@@ -99,6 +100,34 @@ const fakeVision: VisionProvider = {
 };
 let app: INestApplication, db: Db, smtp: Server;
 const messages: string[] = [];
+const requestLogs: unknown[] = [];
+const captureRequestLog = (message: unknown): void => {
+  requestLogs.push(message);
+};
+const capturedRequestSchema = z.object({
+  event: z.literal("http_request"),
+  requestId: z.string(),
+  userId: z.string().nullable(),
+  statusCode: z.number().nullable(),
+  errorCode: z.string().nullable(),
+  route: z.string(),
+});
+type CapturedRequest = z.infer<typeof capturedRequestSchema>;
+function requestLog(id: string): CapturedRequest {
+  const matches = requestLogs
+    .map((entry: unknown): CapturedRequest | null => {
+      const parsed = capturedRequestSchema.safeParse(entry);
+      return parsed.success && parsed.data.requestId === id
+        ? parsed.data
+        : null;
+    })
+    .filter(
+      (entry: CapturedRequest | null): entry is CapturedRequest =>
+        entry !== null,
+    );
+  assert.equal(matches.length, 1, `Expected exactly one summary for ${id}`);
+  return capturedRequestSchema.parse(matches[0]);
+}
 type Agent = ReturnType<typeof request.agent>;
 interface EmailChangeProbe {
   status: "verification_sent" | "google_confirmation_required";
@@ -225,6 +254,7 @@ before(async (): Promise<void> => {
   );
 });
 beforeEach(async (): Promise<void> => {
+  requestLogs.length = 0;
   lastExtractionMode = undefined;
   messages.length = 0;
   emailFailure = false;
@@ -248,6 +278,11 @@ beforeEach(async (): Promise<void> => {
     email: fakeEmail,
     http: fakeHttp,
     vision: fakeVision,
+    logger: {
+      log: captureRequestLog,
+      warn: captureRequestLog,
+      error: captureRequestLog,
+    },
   });
   await app.init();
   db = app.get(Db);
@@ -283,6 +318,74 @@ beforeEach(async (): Promise<void> => {
 });
 afterEach(async (): Promise<void> => {
   await app?.close();
+});
+test("request summaries isolate verified users and identify login and OAuth completion", async (): Promise<void> => {
+  const owner = await db.user.findUniqueOrThrow({
+    where: { email: "admin@example.test" },
+  });
+  const another = await db.user.findUniqueOrThrow({
+    where: { email: "other@example.test" },
+  });
+  await Promise.all([
+    admin
+      .get(base + "/auth/session")
+      .set("X-Request-ID", "owner-log")
+      .expect(200),
+    other
+      .get(base + "/auth/session")
+      .set("X-Request-ID", "another-log")
+      .expect(200),
+    guest
+      .get(base + "/tournaments")
+      .set("X-Request-ID", "anonymous-log")
+      .set("X-User-ID", owner.id)
+      .expect(401),
+  ]);
+  assert.equal(requestLog("owner-log").userId, owner.id);
+  assert.equal(requestLog("another-log").userId, another.id);
+  assert.equal(requestLog("anonymous-log").userId, null);
+  await admin
+    .post(base + "/auth/logout")
+    .set("X-Request-ID", "csrf-log")
+    .expect(403);
+  assert.equal(requestLog("csrf-log").userId, owner.id);
+  assert.equal(requestLog("csrf-log").errorCode, "CSRF_INVALID");
+  const token = await session(guest);
+  await send(
+    guest,
+    "post",
+    "/auth/login",
+    { email: owner.email, password: "correct-horse-123" },
+    token,
+  )
+    .set("X-Request-ID", "login-log")
+    .expect(201);
+  assert.equal(requestLog("login-log").userId, owner.id);
+  const googleGuest = request.agent(httpServer(app));
+  const start = await googleGuest.get(base + "/auth/google").expect(302);
+  const location: unknown = start.headers.location;
+  assert.equal(typeof location, "string");
+  if (typeof location !== "string") throw new Error("Missing OAuth redirect");
+  const state = new URL(location).searchParams.get("state");
+  assert.ok(state);
+  await googleGuest
+    .get(base + "/auth/google/callback")
+    .query({ state, code: "private-oauth-code" })
+    .set("X-Request-ID", "oauth-log")
+    .expect(302);
+  const googleUser = await db.user.findUniqueOrThrow({
+    where: { email: profile.email },
+  });
+  assert.equal(requestLog("oauth-log").userId, googleUser.id);
+  await guest
+    .get(base + "/health")
+    .set("X-Request-ID", "health-log")
+    .expect(200);
+  assert.equal(requestLog("health-log").route, base + "/health");
+  assert.doesNotMatch(
+    JSON.stringify(requestLogs),
+    /correct-horse|private-oauth-code|admin@example|other@example|google@example|arena_session/,
+  );
 });
 test("registration requires verification, delivers mail, and tokens are single-use", async (): Promise<void> => {
   const c = await session(guest);

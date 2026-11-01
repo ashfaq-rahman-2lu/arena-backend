@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import { RequestContextService } from "../src/common/request-context.service";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import sharp from "sharp";
@@ -187,7 +188,11 @@ test(
         }),
       }),
     );
-    const worker = new PaddleOcrProcessAdapter(config, new Logger());
+    const worker = new PaddleOcrProcessAdapter(
+      config,
+      new Logger(),
+      new RequestContextService(),
+    );
     const service = new Extraction(
       new PaddleOcrVisionAdapter(config, worker),
       logger,

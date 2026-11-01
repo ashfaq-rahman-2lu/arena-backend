@@ -2,7 +2,7 @@ import { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from "@nestjs/swagger";
 import { ApiError } from "./common/api-error.dto";
 export function documentation(app: INestApplication): OpenAPIObject {
-  return SwaggerModule.createDocument(
+  const document = SwaggerModule.createDocument(
     app,
     new DocumentBuilder()
       .setTitle("Arena API")
@@ -38,6 +38,11 @@ export function documentation(app: INestApplication): OpenAPIObject {
         type: ApiError,
       })
       .addGlobalResponse({
+        status: 413,
+        description: "Request body too large",
+        type: ApiError,
+      })
+      .addGlobalResponse({
         status: 429,
         description: "Rate limit exceeded",
         type: ApiError,
@@ -54,4 +59,34 @@ export function documentation(app: INestApplication): OpenAPIObject {
       })
       .build(),
   );
+  for (const item of Object.values(document.paths)) {
+    for (const method of [
+      "get",
+      "post",
+      "patch",
+      "put",
+      "delete",
+      "head",
+      "options",
+      "trace",
+    ] as const) {
+      for (const response of Object.values(item[method]?.responses ?? {})) {
+        if (!response || "$ref" in response) continue;
+        response.headers = {
+          ...response.headers,
+          "X-Request-ID": {
+            description:
+              "Request correlation ID. A single incoming ID containing 1–100 letters, digits, underscores or hyphens is preserved; otherwise a UUID is generated.",
+            schema: {
+              type: "string",
+              minLength: 1,
+              maxLength: 100,
+              pattern: "^[\\w-]{1,100}$",
+            },
+          },
+        };
+      }
+    }
+  }
+  return document;
 }

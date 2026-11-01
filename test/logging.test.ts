@@ -21,7 +21,10 @@ interface CapturedLogOutput {
   stderr: string;
 }
 
-function captureLogs(environment: string): CapturedLogOutput {
+function captureLogs(
+  environment: string,
+  correlated: boolean = false,
+): CapturedLogOutput {
   const result = spawnSync(
     process.execPath,
     [
@@ -30,12 +33,25 @@ function captureLogs(environment: string): CapturedLogOutput {
       const { Test } = require('@nestjs/testing');
       const { Logger } = require('@nestjs/common');
       const { InfrastructureModule } = require('./dist/src/infrastructure.module');
+      const { RequestContextService } = require('./dist/src/common/request-context.service');
       (async () => {
         const module = await Test.createTestingModule({
           imports: [InfrastructureModule.register(JSON.parse(process.argv[1]))]
         }).compile();
         const logger = module.get(Logger);
         const event = {event:'logging_check', inferenceMs:3200, note:'two\\nlines with "quotes"'};
+        if (process.argv[2] === 'true') {
+          const context = module.get(RequestContextService);
+          await Promise.all(['a', 'b'].map(id => context.run({requestId:'context-'+id,userId:'user-'+id,errorCode:null,errorType:null}, async () => {
+            await new Promise(resolve => setTimeout(resolve, id === 'a' ? 20 : 1));
+            logger.log({...event, requestId:'forged', userId:'forged'});
+            logger.warn(event);
+            logger.error(event);
+          })));
+          logger.log(event);
+          await module.close();
+          return;
+        }
         logger.log(event);
         logger.warn(event);
         logger.error(event);
@@ -49,6 +65,7 @@ function captureLogs(environment: string): CapturedLogOutput {
         COOKIE_SECURE: "true",
         FRONTEND_URL: "https://arena.example",
       }),
+      String(correlated),
     ],
     { cwd: resolve(__dirname, "../.."), encoding: "utf8", timeout: 10000 },
   );
@@ -71,6 +88,44 @@ test("production logger emits single-line JSON with numeric searchable event fie
   assert.ok(
     entries.every((entry: LogEntry): boolean => entry.context === "Arena"),
   );
+});
+
+test("structured logs carry isolated trusted request context and leave background events unscoped", (): void => {
+  const output = captureLogs("production", true);
+  const schema = entrySchema.extend({
+    message: entrySchema.shape.message.extend({
+      requestId: z.string().optional(),
+      userId: z.string().nullable().optional(),
+    }),
+  });
+  const entries = [
+    ...output.stdout.trim().split("\n"),
+    ...output.stderr.trim().split("\n"),
+  ].map((line: string): z.infer<typeof schema> =>
+    schema.parse(JSON.parse(line)),
+  );
+  assert.equal(entries.length, 7);
+  for (const id of ["a", "b"]) {
+    const scoped = entries.filter(
+      (entry: z.infer<typeof schema>): boolean =>
+        entry.message.requestId === `context-${id}`,
+    );
+    assert.equal(scoped.length, 3);
+    assert.ok(
+      scoped.every(
+        (entry: z.infer<typeof schema>): boolean =>
+          entry.message.userId === `user-${id}`,
+      ),
+    );
+  }
+  assert.equal(
+    entries.filter(
+      (entry: z.infer<typeof schema>): boolean =>
+        entry.message.requestId === undefined,
+    ).length,
+    1,
+  );
+  assert.doesNotMatch(JSON.stringify(entries), /forged/);
 });
 
 test("test logger stays silent", (): void => {

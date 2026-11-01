@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import { ConfigurationService } from "../config/configuration.service";
+import { RequestContextService } from "../common/request-context.service";
 import { SessionCredentials, SessionRecord, SessionView } from "./auth.models";
 import { AuthRepository } from "./auth.repository";
 import { hash } from "./crypto";
@@ -9,6 +10,7 @@ export class SessionsService {
   constructor(
     private readonly repository: AuthRepository,
     private readonly config: ConfigurationService,
+    private readonly requests: RequestContextService,
   ) {}
   find(token: string | null): Promise<SessionRecord | null> {
     return token ? this.repository.session(hash(token)) : Promise.resolve(null);
@@ -42,6 +44,7 @@ export class SessionsService {
       userId,
       credentials.csrf,
     );
+    this.requests.identify(userId);
     return credentials;
   }
   async revoke(token: string | null): Promise<void> {
