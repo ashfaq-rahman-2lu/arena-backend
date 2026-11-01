@@ -145,6 +145,10 @@ Structured logs contain only timing and process metadata:
 
 ### Better Stack log collection through Render
 
+Every request reaching the running HTTP application emits one `http_request` summary when its response completes or the connection closes. It includes the request ID, route template, status, duration, verified user ID when available, observed client IP, bounded user-agent text, and safe error metadata. `X-Request-ID` is returned on successful and failed responses and exposed through CORS. Related structured application/OCR events share the request ID; shared worker lifecycle events stay unscoped.
+
+See the [request logging runbook](docs/REQUEST_LOGGING.md) for the event contract, privacy exclusions, searches, 3-day retention policy, and deployment verification. On 2026-11-01 the connected **Arena backend** source was receiving Render logs with **3-day log retention**, which meets the agreed target. No retention or billing changes are needed.
+
 With `NODE_ENV=production`, the injected application logger and Nest startup logs emit one JSON object per line to stdout/stderr. Development retains readable console output; test logging is disabled. OCR events pass objects to the logger so durations remain numeric, searchable properties instead of JSON strings inside the message. No logging SDK, database, application-side network delivery, or Better Stack environment variables are required.
 
 Example production entry (illustrative values):
@@ -162,6 +166,6 @@ Configure forwarding once in the hosting dashboards:
 5. Deploy the backend, then run one scorecard extraction. In Better Stack, open **Live tail**, select **Arena backend**, and search for `ocr_phases`, `ocr_worker_ready`, or `ocr_process_failure`.
 6. Expand an entry to inspect `message.event`, `message.inferenceMs`, `message.queueMs`, and the other timing fields. Field paths may appear under the parsed log payload depending on Better Stack's Render transformation. Start with text search to confirm delivery.
 
-Forwarding collects new logs; it does not backfill previous logs. Retention and ingestion limits belong to the selected provider plan. These code changes do not create an account, configure a Render log stream, add alerts, or enable request tracing. Existing safe diagnostics remain in effect: uploaded images, extracted scores/statistics, credentials, and raw OCR stderr are not added to logs.
+Forwarding collects new logs; it does not backfill previous logs. Retention and ingestion limits belong to the selected provider plan. These code changes do not create an account, configure a Render log stream, add alerts, or enable distributed tracing. Existing safe diagnostics remain in effect: uploaded images, extracted scores/statistics, credentials, and raw OCR stderr are not added to logs.
 
 Setup reference: [Render log streams and Better Stack](https://render.com/docs/log-streams#better-stack).

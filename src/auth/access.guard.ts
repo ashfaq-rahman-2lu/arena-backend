@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ApplicationError } from "../common/application-error";
 import { ConfigurationService } from "../config/configuration.service";
+import { RequestContextService } from "../common/request-context.service";
 import { equal } from "./crypto";
 import { AuthedRequest, cookie } from "./http-session";
 import { SessionsService } from "./sessions.service";
@@ -11,11 +12,13 @@ export class AccessGuard implements CanActivate {
     private readonly sessions: SessionsService,
     private readonly reflector: Reflector,
     private readonly config: ConfigurationService,
+    private readonly requests: RequestContextService,
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthedRequest>();
     const session = await this.sessions.find(cookie(request, "arena_session"));
     if (session) {
+      this.requests.identify(session.userId);
       request.userId = session.userId;
       request.sessionId = session.id;
       request.csrf = session.csrf;

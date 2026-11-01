@@ -1,6 +1,7 @@
 import { ChildProcessWithoutNullStreams } from "node:child_process";
 import { z } from "zod";
 import { ExtractionMode, matchStats } from "./extraction.models";
+import { RequestCorrelation } from "../common/request-context.models";
 
 const score = z.number().int().min(0).max(99).nullable();
 export const ocrResultSchema = z.object({
@@ -20,6 +21,7 @@ export const workerMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("error") }),
 ]);
 export interface OcrJob {
+  correlation: RequestCorrelation | null;
   image: Buffer;
   mode: ExtractionMode;
   started: number;

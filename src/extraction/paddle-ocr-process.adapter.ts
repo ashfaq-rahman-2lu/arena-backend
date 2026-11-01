@@ -10,6 +10,7 @@ import { resolve } from "node:path";
 import { ConfigurationService } from "../config/configuration.service";
 import { OcrJob, OcrWorker, workerMessageSchema } from "./ocr-worker.models";
 import { ExtractionMode } from "./extraction.models";
+import { RequestContextService } from "../common/request-context.service";
 
 export abstract class OcrProcess {
   abstract run(
@@ -35,6 +36,7 @@ export class PaddleOcrProcessAdapter
   constructor(
     private readonly config: ConfigurationService,
     @Inject(Logger) private readonly log: Logger,
+    private readonly requests: RequestContextService,
   ) {
     super();
   }
@@ -65,6 +67,7 @@ export class PaddleOcrProcessAdapter
         reject: (reason: Error) => void,
       ): void => {
         const job: OcrJob = {
+          correlation: this.requests.correlation(),
           image,
           mode,
           started: Date.now(),
@@ -83,6 +86,11 @@ export class PaddleOcrProcessAdapter
   }
 
   private ensureWorker(python: string): OcrWorker {
+    // A long-lived worker must never inherit the request that happened to start it.
+    return this.requests.run(null, (): OcrWorker => this.startWorker(python));
+  }
+
+  private startWorker(python: string): OcrWorker {
     if (this.worker) return this.worker;
     const child = spawn(python, [resolve("ocr/score_reader.py"), "--worker"], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -169,14 +177,16 @@ export class PaddleOcrProcessAdapter
           const job = this.active;
           this.active = null;
           clearTimeout(job.timer);
-          this.log.log({
-            event: "ocr_phases",
-            mode: job.mode,
-            cells: job.mode === "scores" ? 2 : 28,
-            queueMs: job.dispatched - job.started,
-            totalMs: Date.now() - job.started,
-            ...message.timings,
-          });
+          this.requests.withCorrelation(job.correlation, (): void =>
+            this.log.log({
+              event: "ocr_phases",
+              mode: job.mode,
+              cells: job.mode === "scores" ? 2 : 28,
+              queueMs: job.dispatched - job.started,
+              totalMs: Date.now() - job.started,
+              ...message.timings,
+            }),
+          );
           job.resolve(JSON.stringify(message.result));
           this.dispatch(worker);
         } else {
@@ -202,11 +212,13 @@ export class PaddleOcrProcessAdapter
     const index = this.waiting.indexOf(job);
     if (index !== -1) {
       this.waiting.splice(index, 1);
-      this.log.warn({
-        event: "ocr_process_failure",
-        reason: "queue_timeout",
-        ms: Date.now() - job.started,
-      });
+      this.requests.withCorrelation(job.correlation, (): void =>
+        this.log.warn({
+          event: "ocr_process_failure",
+          reason: "queue_timeout",
+          ms: Date.now() - job.started,
+        }),
+      );
       job.reject(new Error("Local OCR process unavailable"));
     }
   }
@@ -221,14 +233,16 @@ export class PaddleOcrProcessAdapter
     worker.failed = true;
     clearTimeout(worker.timer);
     if (reason !== "shutdown")
-      this.log.warn({
-        event: "ocr_process_failure",
-        reason,
-        ms: Date.now() - worker.started,
-        timeoutMs: this.config.values.vision.timeoutMs,
-        exitCode,
-        signal,
-      });
+      this.requests.run(null, (): void =>
+        this.log.warn({
+          event: "ocr_process_failure",
+          reason,
+          ms: Date.now() - worker.started,
+          timeoutMs: this.config.values.vision.timeoutMs,
+          exitCode,
+          signal,
+        }),
+      );
     const jobs = this.active
       ? [this.active, ...this.waiting]
       : [...this.waiting];

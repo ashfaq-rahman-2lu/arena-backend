@@ -12,6 +12,8 @@ import {
 } from "../src/config/configuration";
 import { ConfigurationService } from "../src/config/configuration.service";
 import { PaddleOcrProcessAdapter } from "../src/extraction/paddle-ocr-process.adapter";
+import { RequestContextService } from "../src/common/request-context.service";
+import { RequestCorrelation } from "../src/common/request-context.models";
 
 test("OCR enforces configured timeout and logs only safe failure metadata", async (): Promise<void> => {
   const directory = await mkdtemp(join(tmpdir(), "arena-ocr-timeout-"));
@@ -33,6 +35,7 @@ test("OCR enforces configured timeout and logs only safe failure metadata", asyn
   const module = await Test.createTestingModule({
     providers: [
       PaddleOcrProcessAdapter,
+      RequestContextService,
       { provide: ConfigurationService, useValue: config },
       {
         provide: Logger,
@@ -85,7 +88,13 @@ interface WorkerFixture {
   adapter: PaddleOcrProcessAdapter;
   executable: string;
   logs: unknown[];
+  context: RequestContextService;
+  correlations: ObservedCorrelation[];
   close: () => Promise<void>;
+}
+interface ObservedCorrelation {
+  event: string | null;
+  correlation: RequestCorrelation | null;
 }
 async function workerFixture(timeout: number = 3000): Promise<WorkerFixture> {
   const directory = await mkdtemp(join(tmpdir(), "arena-ocr-worker-"));
@@ -100,12 +109,23 @@ async function workerFixture(timeout: number = 3000): Promise<WorkerFixture> {
       }),
     }),
   );
+  const context = new RequestContextService();
+  const correlations: ObservedCorrelation[] = [];
   const log = (message: unknown): void => {
     logs.push(message);
+    const event: unknown =
+      typeof message === "object" && message !== null
+        ? Reflect.get(message, "event")
+        : null;
+    correlations.push({
+      event: typeof event === "string" ? event : null,
+      correlation: context.correlation(),
+    });
   };
   const module = await Test.createTestingModule({
     providers: [
       PaddleOcrProcessAdapter,
+      { provide: RequestContextService, useValue: context },
       { provide: ConfigurationService, useValue: config },
       { provide: Logger, useValue: { warn: log, log } },
     ],
@@ -114,12 +134,75 @@ async function workerFixture(timeout: number = 3000): Promise<WorkerFixture> {
     adapter: module.get(PaddleOcrProcessAdapter),
     executable,
     logs,
+    context,
+    correlations,
     close: async (): Promise<void> => {
       await module.close();
       await rm(directory, { recursive: true, force: true });
     },
   };
 }
+
+test("queued OCR phases keep each request identity and shared worker logs have no request identity", async (): Promise<void> => {
+  const fixture = await workerFixture();
+  try {
+    await Promise.all(
+      ["first", "second"].map((id: string, index: number): Promise<string> =>
+        fixture.context.withCorrelation(
+          { requestId: id, userId: `user-${id}` },
+          (): Promise<string> =>
+            fixture.adapter.run(
+              fixture.executable,
+              Buffer.from(String(index + 1)),
+            ),
+        ),
+      ),
+    );
+    assert.deepEqual(
+      fixture.correlations
+        .filter(
+          (entry: ObservedCorrelation): boolean => entry.event === "ocr_phases",
+        )
+        .map(
+          (entry: ObservedCorrelation): RequestCorrelation | null =>
+            entry.correlation,
+        ),
+      [
+        { requestId: "first", userId: "user-first" },
+        { requestId: "second", userId: "user-second" },
+      ],
+    );
+    assert.ok(
+      fixture.correlations
+        .filter(
+          (entry: ObservedCorrelation): boolean =>
+            entry.event === "ocr_worker_ready",
+        )
+        .every(
+          (entry: ObservedCorrelation): boolean => entry.correlation === null,
+        ),
+    );
+    await assert.rejects(
+      fixture.context.withCorrelation(
+        { requestId: "failure", userId: "user-failure" },
+        (): Promise<string> =>
+          fixture.adapter.run(fixture.executable, Buffer.from("crash")),
+      ),
+    );
+    assert.ok(
+      fixture.correlations
+        .filter(
+          (entry: ObservedCorrelation): boolean =>
+            entry.event === "ocr_process_failure",
+        )
+        .every(
+          (entry: ObservedCorrelation): boolean => entry.correlation === null,
+        ),
+    );
+  } finally {
+    await fixture.close();
+  }
+});
 
 test("OCR worker reuses one process and keeps concurrent responses matched", async (): Promise<void> => {
   const fixture = await workerFixture();

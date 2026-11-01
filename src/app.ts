@@ -1,4 +1,9 @@
-import { INestApplication, Logger, ValidationPipe } from "@nestjs/common";
+import {
+  INestApplication,
+  Logger,
+  LoggerService,
+  ValidationPipe,
+} from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import "reflect-metadata";
 
@@ -14,6 +19,7 @@ import { RateGuard } from "./auth/rate.guard";
 import { EmailPort } from "./auth/smtp-email.adapter";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
 import { HttpTransport } from "./common/fetch-http.adapter";
+import { RequestLoggingService } from "./common/request-logging.service";
 import { ConfigurationService } from "./config/configuration.service";
 import { VisionProvider } from "./extraction/extraction.models";
 import { documentation } from "./swagger";
@@ -23,6 +29,7 @@ export interface ApplicationOptions {
   oauth?: OAuthPort;
   vision?: VisionProvider;
   http?: HttpTransport;
+  logger?: LoggerService;
 }
 export async function createApp(
   options: ApplicationOptions,
@@ -31,9 +38,17 @@ export async function createApp(
   const server = express();
   const adapter = new ExpressAdapter(server);
   let app: INestApplication;
-  if (options.email || options.oauth || options.vision || options.http) {
+  if (
+    options.email ||
+    options.oauth ||
+    options.vision ||
+    options.http ||
+    options.logger
+  ) {
     const { Test } = await import("@nestjs/testing");
     const builder = Test.createTestingModule({ imports: [module] });
+    if (options.logger)
+      builder.overrideProvider(Logger).useValue(options.logger);
     if (options.email)
       builder.overrideProvider(EmailPort).useValue(options.email);
     if (options.oauth)
@@ -56,9 +71,15 @@ export async function createApp(
   const config = app.get(ConfigurationService).values;
   if (config.environment !== "test") app.useLogger(app.get(Logger));
   app.setGlobalPrefix("api/v1");
+  const requests = app.get(RequestLoggingService);
+  app.use(requests.use.bind(requests));
   app.use(helmet());
   app.use(cookieParser(config.sessionSecret));
-  app.enableCors({ origin: config.frontendUrl, credentials: true });
+  app.enableCors({
+    origin: config.frontendUrl,
+    credentials: true,
+    exposedHeaders: ["X-Request-ID"],
+  });
   if (config.trustProxy) server.set("trust proxy", 1);
   app.useGlobalPipes(
     new ValidationPipe({
