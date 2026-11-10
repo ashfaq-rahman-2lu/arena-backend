@@ -1,3 +1,6 @@
+import { Logger } from "@nestjs/common";
+import { OperationTimingService } from "../src/common/operation-timing.service";
+import { RequestContextService } from "../src/common/request-context.service";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Test } from "@nestjs/testing";
@@ -12,6 +15,9 @@ test("CODM setup cannot reserve a stats slot", async (): Promise<void> => {
   const module = await Test.createTestingModule({
     providers: [
       TournamentsService,
+      OperationTimingService,
+      RequestContextService,
+      { provide: Logger, useValue: { log: (_event: unknown): void => {} } },
       { provide: TournamentsRepository, useValue: {} },
       { provide: ConfigurationService, useValue: {} },
     ],

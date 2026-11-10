@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+import { OperationTimingService } from "../common/operation-timing.service";
 import { Injectable } from "@nestjs/common";
 import { resultSnapshot } from "./result-audit.models";
 import { ZodError } from "zod";
@@ -86,6 +88,7 @@ type Tx = TransactionClient;
 @Injectable()
 export class TournamentsService {
   constructor(
+    private readonly timing: OperationTimingService,
     private readonly repository: TournamentsRepository,
     private readonly config: ConfigurationService,
   ) {}
@@ -212,7 +215,9 @@ export class TournamentsService {
   }
   view(t: TournamentAggregate): TournamentView {
     const { ownerId, ...clean } = t;
-    return tournamentView(clean);
+    return this.timing.sync("tournament.response", (): TournamentView =>
+      tournamentView(clean),
+    );
   }
   async publicView(code: string): Promise<TournamentView> {
     const tournament = await this.repository.publicView(code);
@@ -424,26 +429,32 @@ export class TournamentsService {
     userId: string,
     expected: number,
     fn: (tx: Tx, t: TournamentAggregate) => Promise<void>,
+    advance: boolean = false,
   ): Promise<TournamentView> {
-    await this.repository.transaction(async (tx: Tx): Promise<void> => {
-      // Serialize all mutations to a tournament, including start, qualification and score corrections.
-      await this.repository.lockTournament(tx, id);
-      const t = await this.owned(id, userId, tx);
-      if (t.revision !== expected)
-        throw new ApplicationError(
-          "REVISION_CONFLICT",
-          409,
-          "Tournament changed. Refresh and try again.",
-        );
-      await fn(tx, t);
-      const updated = await this.load(id, tx);
-      const state = completion(updated);
-      await this.repository.tournamentUpdate(tx, {
-        where: { id },
-        data: { ...state, revision: { increment: 1 } },
-      });
-    });
-    return this.view(await this.load(id));
+    const committed = await this.repository.transaction(
+      async (tx: Tx): Promise<TournamentAggregate> => {
+        // Serialize all mutations to a tournament, including start, qualification and score corrections.
+        await this.repository.lockTournament(tx, id);
+        const t = await this.owned(id, userId, tx);
+        if (t.revision !== expected)
+          throw new ApplicationError(
+            "REVISION_CONFLICT",
+            409,
+            "Tournament changed. Refresh and try again.",
+          );
+        await fn(tx, t);
+        let updated = await this.load(id, tx);
+        if (advance && (await this.advanceFixed(tx, updated)))
+          updated = await this.load(id, tx);
+        const state = completion(updated);
+        await this.repository.tournamentUpdate(tx, {
+          where: { id },
+          data: { ...state, revision: { increment: 1 } },
+        });
+        return { ...updated, ...state, revision: updated.revision + 1 };
+      },
+    );
+    return this.view(committed);
   }
   async update(
     id: string,
@@ -911,14 +922,13 @@ export class TournamentsService {
       },
     );
   }
-  async advanceFixed(tx: Tx, id: string): Promise<void> {
-    const t = await this.load(id, tx);
-    if (t.rounds[0]?.method !== "FIXED") return;
+  async advanceFixed(tx: Tx, t: TournamentAggregate): Promise<boolean> {
+    if (t.rounds[0]?.method !== "FIXED") return false;
     let eligible: ReturnType<typeof knockoutEligibility>;
     try {
       eligible = knockoutEligibility(t);
     } catch {
-      return;
+      return false;
     }
     const pairs: [string, string][] = [];
     for (let i = 0; i < eligible.entrantIds.length; i += 2)
@@ -929,6 +939,7 @@ export class TournamentsService {
       method: "FIXED",
       expectedRevision: t.revision,
     });
+    return true;
   }
   async ownerMatch(matchId: string, userId: string): Promise<OwnerMatchResult> {
     const tournamentId = await this.repository.matchTournamentId(matchId);
@@ -1057,7 +1068,15 @@ export class TournamentsService {
     userId: string,
     input: ResultInput,
   ): Promise<PreviewResultResult> {
-    const { t, m } = await this.ownerMatch(matchId, userId);
+    const t = await this.repository.previewSource(matchId);
+    if (t.ownerId !== userId)
+      throw new ApplicationError(
+        "FORBIDDEN",
+        403,
+        "Only the owner can edit this tournament",
+      );
+    const m = t.matches.find((match: Match): boolean => match.id === matchId);
+    if (!m) throw new ApplicationError("NOT_FOUND", 404, "Match not found");
     if (
       m.revision !== input.expectedRevision ||
       t.revision !== input.expectedTournamentRevision
@@ -1080,9 +1099,9 @@ export class TournamentsService {
     userId: string,
     input: ResultInput,
   ): Promise<TournamentView> {
-    const { m, t: ownedTournament } = await this.ownerMatch(matchId, userId);
+    const tournamentId = await this.repository.matchTournamentId(matchId);
     return this.mutate(
-      ownedTournament.id,
+      tournamentId,
       userId,
       input.expectedTournamentRevision,
       async (tx: Tx, t: TournamentAggregate): Promise<void> => {
@@ -1167,34 +1186,32 @@ export class TournamentsService {
         });
         await this.repository.matchUpdate(tx, {
           where: { id: matchId },
-          data: { ...score, revision: { increment: 1 } },
+          data: {
+            ...score,
+            revision: { increment: 1 },
+            ...(score.homeScore === null || input.stats === null
+              ? { stats: Prisma.DbNull }
+              : input.stats !== undefined
+                ? {
+                    stats: input.stats.map(
+                      (
+                        stat: NonNullable<ResultInput["stats"]>[number],
+                      ): Prisma.InputJsonObject => ({
+                        ...stat,
+                        home: stat.home ?? null,
+                        away: stat.away ?? null,
+                      }),
+                    ),
+                  }
+                : {}),
+          },
         });
-        if (score.homeScore === null) {
-          await this.repository.saveMatchStats(tx, matchId, null);
-        } else if (input.stats !== undefined) {
-          const validatedStats =
-            input.stats === null
-              ? null
-              : matchStats.parse(
-                  input.stats.map(
-                    (
-                      stat: NonNullable<ResultInput["stats"]>[number],
-                    ): MatchStat => ({
-                      ...stat,
-                      home: stat.home ?? null,
-                      away: stat.away ?? null,
-                    }),
-                  ),
-                );
-          await this.repository.saveMatchStats(tx, matchId, validatedStats);
-        }
         if (tie)
           await this.repository.tieUpdate(tx, tie.id, {
             winnerId: tie.winnerId,
             homeTiebreak: tie.homeTiebreak,
             awayTiebreak: tie.awayTiebreak,
           });
-        await this.advanceFixed(tx, t.id);
         if (
           current.homeScore !== score.homeScore ||
           current.awayScore !== score.awayScore
@@ -1203,6 +1220,7 @@ export class TournamentsService {
             where: { tournamentId: t.id, scope: current.scope },
           });
       },
+      true,
     );
   }
 }

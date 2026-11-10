@@ -229,7 +229,12 @@ test("early parser errors and guard failures receive safe error summaries", asyn
       [400, 413, 401, 403, 500],
     );
     assert.deepEqual(
-      f.events.map((entry: CapturedEvent): string => entry.level),
+      f.events
+        .filter(
+          (entry: CapturedEvent): boolean =>
+            summarySchema.safeParse(entry.message).success,
+        )
+        .map((entry: CapturedEvent): string => entry.level),
       ["warn", "warn", "warn", "warn", "error"],
     );
     assert.equal(summaries(f.events).at(-1)?.errorCode, "INTERNAL_ERROR");

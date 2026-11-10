@@ -1,3 +1,4 @@
+import { OperationTimingService } from "./common/operation-timing.service";
 import { DynamicModule, Global, Logger, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import "reflect-metadata";
@@ -29,6 +30,7 @@ export class InfrastructureModule {
       providers: [
         ConfigurationService,
         RequestContextService,
+        OperationTimingService,
         RequestLoggingService,
         ApplicationLoggerService,
         { provide: Logger, useExisting: ApplicationLoggerService },
@@ -38,6 +40,7 @@ export class InfrastructureModule {
       exports: [
         ConfigurationService,
         RequestContextService,
+        OperationTimingService,
         RequestLoggingService,
         Logger,
         ApiExceptionFilter,

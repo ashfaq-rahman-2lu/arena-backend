@@ -65,13 +65,14 @@ export class AuthController {
   @Get("session")
   @ApiOkResponse({ type: SessionView })
   async session(
-    @Req() request: Request,
+    @Req() request: AuthedRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<SessionView> {
     response.setHeader("Cache-Control", "no-store");
     const result = await this.sessions.view(
       cookie(request, "arena_session"),
       cookie(request, "arena_csrf"),
+      request.resolvedSession,
     );
     response.cookie("arena_csrf", result.csrf, {
       ...cookieOptions(this.config),

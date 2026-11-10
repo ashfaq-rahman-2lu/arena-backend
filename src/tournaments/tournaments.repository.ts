@@ -1,3 +1,13 @@
+import {
+  include,
+  publicInclude,
+  tournamentListSummarySchema,
+  TournamentListSummaryRecord,
+  PublicTournamentRecord,
+  PreviewMatchRecord,
+  TournamentRecord,
+} from "./tournament-read.models";
+import { OperationTimingService } from "../common/operation-timing.service";
 import { TournamentStatSource } from "../stats/team-stats.models";
 import {
   auditActions,
@@ -20,24 +30,7 @@ import {
   TournamentSummary,
 } from "./tournament-response.dto";
 import { TournamentAggregate } from "./tournament.models";
-import { text } from "express";
 import { MatchStat, matchStats } from "../extraction/extraction.models";
-const include = {
-  entrants: { orderBy: [{ name: "asc" }, { id: "asc" }] },
-  groups: { orderBy: [{ name: "asc" }, { id: "asc" }] },
-  matches: {
-    orderBy: [
-      { scope: "asc" },
-      { round: "asc" },
-      { leg: "asc" },
-      { pairingKey: "asc" },
-    ],
-  },
-  knockoutTies: { orderBy: { slot: "asc" } },
-  rounds: { include: { byes: true }, orderBy: { number: "asc" } },
-  ties: true,
-  qualification: true,
-} satisfies Prisma.TournamentInclude;
 interface TournamentIdentity {
   id: string;
 }
@@ -46,9 +39,6 @@ interface RoundIdentity {
   number: number;
 }
 export type TransactionClient = Prisma.TransactionClient;
-type TournamentRecord = Prisma.TournamentGetPayload<{
-  include: typeof include;
-}>;
 function storedValue<T extends string>(
   value: string,
   allowed: readonly T[],
@@ -218,21 +208,35 @@ export function auditPayload(value: Prisma.JsonValue): Prisma.JsonValue {
 }
 @Injectable()
 export class TournamentsRepository {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly timing: OperationTimingService,
+  ) {}
   transaction<T>(operation: (tx: TransactionClient) => Promise<T>): Promise<T> {
-    return this.db.$transaction(operation, { timeout: 20000 });
+    return this.timing.measure("tournament.transaction", (): Promise<T> =>
+      this.db.$transaction(operation, { timeout: 20000 }),
+    );
   }
   async load(
     id: string,
     tx: TransactionClient = this.db,
   ): Promise<TournamentAggregate> {
-    const t = await tx.tournament.findUnique({ where: { id }, include });
+    const t = await this.timing.measure(
+      "tournament.load",
+      (): Promise<TournamentRecord | null> =>
+        tx.tournament.findUnique({
+          relationLoadStrategy: "join",
+          where: { id },
+          include,
+        }),
+    );
     if (!t)
       throw new ApplicationError("NOT_FOUND", 404, "Tournament not found");
     return mapAggregate(t);
   }
   async publicStatSource(publicId: string): Promise<TournamentStatSource> {
     const tournament = await this.db.tournament.findUnique({
+      relationLoadStrategy: "query",
       where: { publicId: publicId.trim().toUpperCase() },
       select: {
         statsEnabled: true,
@@ -276,6 +280,7 @@ export class TournamentsRepository {
     matchId: string,
   ): Promise<MatchStat[]> {
     const match = await this.db.match.findFirst({
+      relationLoadStrategy: "query",
       where: {
         id: matchId,
         homeScore: { not: null },
@@ -293,17 +298,42 @@ export class TournamentsRepository {
     return match.stats === null ? [] : matchStats.parse(match.stats);
   }
   async publicView(publicId: string): Promise<TournamentAggregate> {
-    const t = await this.db.tournament.findUnique({
-      where: { publicId: publicId.trim().toUpperCase() },
-      include,
-    });
+    const t = await this.timing.measure(
+      "tournament.public",
+      (): Promise<PublicTournamentRecord | null> =>
+        this.db.tournament.findUnique({
+          relationLoadStrategy: "join",
+          where: { publicId: publicId.trim().toUpperCase() },
+          include: publicInclude,
+        }),
+    );
     if (!t)
       throw new ApplicationError(
         "NOT_FOUND",
         404,
         "No tournament found with that ID",
       );
-    return mapAggregate(t);
+    return mapAggregate({
+      ...t,
+      matches: t.matches.map(
+        (
+          match: (typeof t.matches)[number],
+        ): TournamentRecord["matches"][number] => ({ ...match, stats: null }),
+      ),
+    });
+  }
+  async previewSource(matchId: string): Promise<TournamentAggregate> {
+    const match = await this.timing.measure(
+      "tournament.preview",
+      (): Promise<PreviewMatchRecord | null> =>
+        this.db.match.findUnique({
+          relationLoadStrategy: "join",
+          where: { id: matchId },
+          select: { tournament: { include } },
+        }),
+    );
+    if (!match) throw new ApplicationError("NOT_FOUND", 404, "Match not found");
+    return mapAggregate(match.tournament);
   }
   async matchTournamentId(id: string): Promise<string> {
     const match = await this.db.match.findUnique({
@@ -347,7 +377,12 @@ export class TournamentsRepository {
       limit: query.limit,
     };
   }
-  async list(
+  list(ownerId: string, query: TournamentListQuery): Promise<TournamentPage> {
+    return this.timing.measure("tournament.list", (): Promise<TournamentPage> =>
+      this.listPage(ownerId, query),
+    );
+  }
+  private async listPage(
     ownerId: string,
     query: TournamentListQuery,
   ): Promise<TournamentPage> {
@@ -358,39 +393,41 @@ export class TournamentsRepository {
         : {}),
       ...(query.status ? { status: query.status } : {}),
     };
-    const [items, total, ownerTotal, active, draft, finished, entrants] =
-      await this.db.$transaction([
-        this.db.tournament.findMany({
-          where,
-          skip: (query.page - 1) * query.limit,
-          take: query.limit,
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          select: {
-            id: true,
-            publicId: true,
-            name: true,
-            game: true,
-            format: true,
-            status: true,
-            createdAt: true,
-            legs: true,
-            revision: true,
-            statsEnabled: true,
-            entrants: {
-              take: 4,
-              orderBy: [{ name: "asc" }, { id: "asc" }],
-              select: { id: true, name: true, aliases: true, groupId: true },
-            },
-            _count: { select: { entrants: true, matches: true } },
+    const [items, rawSummary] = await this.db.$transaction([
+      this.db.tournament.findMany({
+        relationLoadStrategy: "join",
+        where,
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          publicId: true,
+          name: true,
+          game: true,
+          format: true,
+          status: true,
+          createdAt: true,
+          legs: true,
+          revision: true,
+          statsEnabled: true,
+          entrants: {
+            take: 4,
+            orderBy: [{ name: "asc" }, { id: "asc" }],
+            select: { id: true, name: true, aliases: true, groupId: true },
           },
-        }),
-        this.db.tournament.count({ where }),
-        this.db.tournament.count({ where: { ownerId } }),
-        this.db.tournament.count({ where: { ownerId, status: "ACTIVE" } }),
-        this.db.tournament.count({ where: { ownerId, status: "DRAFT" } }),
-        this.db.tournament.count({ where: { ownerId, status: "COMPLETED" } }),
-        this.db.entrant.count({ where: { tournament: { ownerId } } }),
-      ]);
+          _count: { select: { entrants: true, matches: true } },
+        },
+      }),
+      this.db.$queryRaw<unknown>`SELECT
+          count(*) FILTER (WHERE (${query.status ?? null}::text IS NULL OR t.status = ${query.status ?? null}) AND (${query.search ?? null}::text IS NULL OR t.name ILIKE ${"%" + (query.search ?? "") + "%"}))::int AS total,
+          count(*)::int AS tournaments,
+          count(*) FILTER (WHERE t.status = 'ACTIVE')::int AS active,
+          count(*) FILTER (WHERE t.status = 'DRAFT')::int AS draft,
+          count(*) FILTER (WHERE t.status = 'COMPLETED')::int AS completed,
+          (SELECT count(*)::int FROM "Entrant" e JOIN "Tournament" parent ON parent.id = e."tournamentId" WHERE parent."ownerId" = ${ownerId}) AS entrants
+          FROM "Tournament" t WHERE t."ownerId" = ${ownerId}`,
+    ]);
     const completed = await this.db.match.groupBy({
       by: ["tournamentId"],
       where: {
@@ -402,13 +439,15 @@ export class TournamentsRepository {
       },
       _count: true,
     });
-    const totals = {
-      tournaments: ownerTotal,
-      active,
-      draft,
-      completed: finished,
-      entrants,
-    };
+    const summary: TournamentListSummaryRecord | undefined =
+      tournamentListSummarySchema.parse(rawSummary)[0];
+    if (!summary)
+      throw new ApplicationError(
+        "INTERNAL_ERROR",
+        500,
+        "Tournament totals unavailable",
+      );
+    const { total, ...totals } = summary;
     return {
       items: items.map((item: (typeof items)[number]): TournamentSummary => ({
         id: item.id,
@@ -539,7 +578,11 @@ export class TournamentsRepository {
   }
 
   async lockTournament(tx: TransactionClient, id: string): Promise<void> {
-    await tx.$queryRaw`SELECT id FROM "Tournament" WHERE id = ${id} FOR UPDATE`;
+    await this.timing.measure(
+      "tournament.lock",
+      (): Promise<unknown> =>
+        tx.$queryRaw`SELECT id FROM "Tournament" WHERE id = ${id} FOR UPDATE`,
+    );
   }
   async lockOwnerStats(tx: TransactionClient, ownerId: string): Promise<void> {
     await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${ownerId}))`;

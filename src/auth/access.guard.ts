@@ -17,6 +17,7 @@ export class AccessGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthedRequest>();
     const session = await this.sessions.find(cookie(request, "arena_session"));
+    request.resolvedSession = session;
     if (session) {
       this.requests.identify(session.userId);
       request.userId = session.userId;
