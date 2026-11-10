@@ -10,7 +10,11 @@ import {
   SessionRecord,
   TokenPurpose,
 } from "./auth.models";
-function account(record: User): Account {
+type AccountRecord = Pick<
+  User,
+  "id" | "name" | "email" | "passwordHash" | "verified"
+>;
+function account(record: AccountRecord): Account {
   return {
     id: record.id,
     name: record.name,
@@ -104,8 +108,22 @@ export class AuthRepository {
   }
   async session(id: string): Promise<SessionRecord | null> {
     const record = await this.db.session.findFirst({
+      relationLoadStrategy: "join",
       where: { id, expiresAt: { gt: new Date() } },
-      include: { user: true },
+      select: {
+        id: true,
+        userId: true,
+        csrf: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            passwordHash: true,
+            verified: true,
+          },
+        },
+      },
     });
     return record
       ? {

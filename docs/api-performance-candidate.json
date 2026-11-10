@@ -1,0 +1,3683 @@
+[
+  {
+    "event": "benchmark_environment",
+    "deployedCommit": "unverified",
+    "apiRegion": "local",
+    "databaseRegion": "local",
+    "databaseHost": "127.0.0.1",
+    "postgres": [
+      {
+        "version": "PostgreSQL 16.14 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit"
+      }
+    ],
+    "resourceScope": "combined in-process HTTP client and server; local PostgreSQL container"
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 8.713125000000218,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.037,
+        "executionMs": 0.033
+      },
+      {
+        "planningMs": 0.111,
+        "executionMs": 0.083
+      },
+      {
+        "planningMs": 0.072,
+        "executionMs": 0.041
+      },
+      {
+        "planningMs": 0.063,
+        "executionMs": 0.254
+      },
+      {
+        "planningMs": 0.035,
+        "executionMs": 0.03
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.025
+      },
+      {
+        "planningMs": 0.037,
+        "executionMs": 0.022
+      },
+      {
+        "planningMs": 0.034,
+        "executionMs": 0.031
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 9.339332999999897,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.702,
+        "executionMs": 3.424
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 31.216084400000017,
+    "p50Ms": 27.94104200000038,
+    "p95Ms": 53.548665999999685,
+    "maxMs": 96.67095800000061,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 325533696,
+    "cpuMicroseconds": {
+      "user": 4646475,
+      "system": 389622
+    },
+    "sqlCountIncludingWarmup": 2201,
+    "sqlMsIncludingWarmup": 1848
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.892987525000035,
+    "p50Ms": 5.575249999999869,
+    "p95Ms": 7.8182919999999285,
+    "maxMs": 17.00245900000118,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 335396864,
+    "cpuMicroseconds": {
+      "user": 612540,
+      "system": 99826
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 86
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.207824364999997,
+    "p50Ms": 5.7983339999991586,
+    "p95Ms": 8.821458000000348,
+    "maxMs": 17.984667000000627,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 338526208,
+    "cpuMicroseconds": {
+      "user": 646839,
+      "system": 121575
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 75
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 8.835857709999946,
+    "p50Ms": 8.50512499999968,
+    "p95Ms": 10.927708000001076,
+    "maxMs": 14.693083000000115,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 338067456,
+    "cpuMicroseconds": {
+      "user": 1240252,
+      "system": 112616
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 675
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 8.524119615000108,
+    "p50Ms": 8.075334000001021,
+    "p95Ms": 11.041250000002037,
+    "maxMs": 20.494957999999315,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 355893248,
+    "cpuMicroseconds": {
+      "user": 1129915,
+      "system": 89865
+    },
+    "sqlCountIncludingWarmup": 441,
+    "sqlMsIncludingWarmup": 583
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 8.784102274999931,
+    "p50Ms": 8.668041999997513,
+    "p95Ms": 10.59783299999981,
+    "maxMs": 16.260792000000947,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 373342208,
+    "cpuMicroseconds": {
+      "user": 1161486,
+      "system": 81963
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 671
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.2205854099999485,
+    "p50Ms": 4.5787080000009155,
+    "p95Ms": 7.699708000000101,
+    "maxMs": 18.86458400000265,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 371179520,
+    "cpuMicroseconds": {
+      "user": 479290,
+      "system": 122261
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 32
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.852883134999956,
+    "p50Ms": 4.662082999999257,
+    "p95Ms": 6.605875000001106,
+    "maxMs": 22.86529199999859,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 390184960,
+    "cpuMicroseconds": {
+      "user": 500616,
+      "system": 150345
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 29
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 6.615666999998211,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.017
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.038
+      },
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.009
+      },
+      {
+        "planningMs": 0.037,
+        "executionMs": 0.218
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.024
+      },
+      {
+        "planningMs": 0.026,
+        "executionMs": 0.029
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.019
+      },
+      {
+        "planningMs": 0.017,
+        "executionMs": 0.017
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 7.17412499999773,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.691,
+        "executionMs": 2.004
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 57.80697770999998,
+    "p50Ms": 57.125584000001254,
+    "p95Ms": 72.68812500000058,
+    "maxMs": 92.63987499999712,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 486375424,
+    "cpuMicroseconds": {
+      "user": 5026090,
+      "system": 291258
+    },
+    "sqlCountIncludingWarmup": 2205,
+    "sqlMsIncludingWarmup": 2712
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 10.117667904999927,
+    "p50Ms": 8.883499999999913,
+    "p95Ms": 20.9498339999991,
+    "maxMs": 29.02558399999907,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 422412288,
+    "cpuMicroseconds": {
+      "user": 557510,
+      "system": 96277
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 597
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.813319224999887,
+    "p50Ms": 9.06170800000109,
+    "p95Ms": 17.300332999999227,
+    "maxMs": 24.75195899999744,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 343130112,
+    "cpuMicroseconds": {
+      "user": 500491,
+      "system": 86176
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 549
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 27.69629186500004,
+    "p50Ms": 22.918291000001773,
+    "p95Ms": 42.880542000002606,
+    "maxMs": 210.37783300000228,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 277692416,
+    "cpuMicroseconds": {
+      "user": 2406305,
+      "system": 192221
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1762
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 20.196631090000082,
+    "p50Ms": 19.597625000002154,
+    "p95Ms": 31.258208999999624,
+    "maxMs": 40.99345800000083,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 323502080,
+    "cpuMicroseconds": {
+      "user": 1944872,
+      "system": 144825
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1760
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 17.080751665000044,
+    "p50Ms": 15.932708000000275,
+    "p95Ms": 28.30620800000179,
+    "maxMs": 35.41449999999895,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 329334784,
+    "cpuMicroseconds": {
+      "user": 2010048,
+      "system": 96117
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1342
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.318443295000016,
+    "p50Ms": 5.100542000000132,
+    "p95Ms": 7.723999999998341,
+    "maxMs": 15.604125000001659,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 337575936,
+    "cpuMicroseconds": {
+      "user": 271943,
+      "system": 69464
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 115
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.528244584999902,
+    "p50Ms": 5.207166000000143,
+    "p95Ms": 7.3400000000001455,
+    "maxMs": 14.574415999999474,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 338018304,
+    "cpuMicroseconds": {
+      "user": 275001,
+      "system": 62915
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 126
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 36.30441599999904,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.053,
+        "executionMs": 0.024
+      },
+      {
+        "planningMs": 0.03,
+        "executionMs": 0.075
+      },
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.018
+      },
+      {
+        "planningMs": 0.036,
+        "executionMs": 4.488
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.019
+      },
+      {
+        "planningMs": 0.022,
+        "executionMs": 0.02
+      },
+      {
+        "planningMs": 0.02,
+        "executionMs": 0.016
+      },
+      {
+        "planningMs": 0.017,
+        "executionMs": 0.013
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 84.12195799999972,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 1.037,
+        "executionMs": 24.395
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 183.76562936999994,
+    "p50Ms": 176.36891699999978,
+    "p95Ms": 222.45620800000324,
+    "maxMs": 406.2513749999998,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 294338560,
+    "cpuMicroseconds": {
+      "user": 21794428,
+      "system": 2190190
+    },
+    "sqlCountIncludingWarmup": 2204,
+    "sqlMsIncludingWarmup": 19393
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.249841480000105,
+    "p50Ms": 8.378958000001148,
+    "p95Ms": 15.088209000008646,
+    "maxMs": 29.91416700000991,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 146898944,
+    "cpuMicroseconds": {
+      "user": 741668,
+      "system": 162217
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 552
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.340630604999824,
+    "p50Ms": 8.092332999993232,
+    "p95Ms": 16.737083999993047,
+    "maxMs": 43.26745800000208,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 194576384,
+    "cpuMicroseconds": {
+      "user": 740333,
+      "system": 186638
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 579
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 83.88327144999944,
+    "p50Ms": 81.52891600001021,
+    "p95Ms": 101.34591600000567,
+    "maxMs": 113.93608300000778,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 299778048,
+    "cpuMicroseconds": {
+      "user": 9963716,
+      "system": 925883
+    },
+    "sqlCountIncludingWarmup": 441,
+    "sqlMsIncludingWarmup": 9090
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 78.88947374499949,
+    "p50Ms": 76.9277080000029,
+    "p95Ms": 91.35054100000707,
+    "maxMs": 212.61229200000525,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 298647552,
+    "cpuMicroseconds": {
+      "user": 9378294,
+      "system": 872997
+    },
+    "sqlCountIncludingWarmup": 441,
+    "sqlMsIncludingWarmup": 8769
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 84.51091500500087,
+    "p50Ms": 82.22404200000165,
+    "p95Ms": 102.60050000000047,
+    "maxMs": 141.46283300001232,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 170344448,
+    "cpuMicroseconds": {
+      "user": 9358588,
+      "system": 746484
+    },
+    "sqlCountIncludingWarmup": 442,
+    "sqlMsIncludingWarmup": 9894
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.564847089999967,
+    "p50Ms": 4.39533400000073,
+    "p95Ms": 6.180166999998619,
+    "maxMs": 24.761499999993248,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 241664000,
+    "cpuMicroseconds": {
+      "user": 390513,
+      "system": 155301
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 31
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 3.8476531200003956,
+    "p50Ms": 3.517250000004424,
+    "p95Ms": 6.214500000001863,
+    "maxMs": 19.18383399999584,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 263471104,
+    "cpuMicroseconds": {
+      "user": 420396,
+      "system": 96452
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 36
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 39.08787499999744,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.075,
+        "executionMs": 0.027
+      },
+      {
+        "planningMs": 0.048,
+        "executionMs": 0.088
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.007
+      },
+      {
+        "planningMs": 0.035,
+        "executionMs": 3.787
+      },
+      {
+        "planningMs": 0.035,
+        "executionMs": 0.008
+      },
+      {
+        "planningMs": 0.039,
+        "executionMs": 0.05
+      },
+      {
+        "planningMs": 0.047,
+        "executionMs": 0.043
+      },
+      {
+        "planningMs": 0.031,
+        "executionMs": 0.032
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 73.48620899999514,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.626,
+        "executionMs": 24.962
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 589.3276729399992,
+    "p50Ms": 514.1467089999933,
+    "p95Ms": 967.5180830000027,
+    "maxMs": 1203.2724170000001,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 454623232,
+    "cpuMicroseconds": {
+      "user": 71453062,
+      "system": 3482978
+    },
+    "sqlCountIncludingWarmup": 2214,
+    "sqlMsIncludingWarmup": 42389
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.653804839998775,
+    "p50Ms": 13.528332999994745,
+    "p95Ms": 23.254458999988856,
+    "maxMs": 43.76883299998008,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 461864960,
+    "cpuMicroseconds": {
+      "user": 656611,
+      "system": 119067
+    },
+    "sqlCountIncludingWarmup": 1321,
+    "sqlMsIncludingWarmup": 1788
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.320361904999881,
+    "p50Ms": 13.862624999979744,
+    "p95Ms": 19.08333299998776,
+    "maxMs": 27.61379100001068,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 457277440,
+    "cpuMicroseconds": {
+      "user": 606764,
+      "system": 104241
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1474
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 364.26962040999933,
+    "p50Ms": 363.49499999999534,
+    "p95Ms": 581.2182500000054,
+    "maxMs": 618.8398750000051,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 550273024,
+    "cpuMicroseconds": {
+      "user": 43930042,
+      "system": 2238409
+    },
+    "sqlCountIncludingWarmup": 445,
+    "sqlMsIncludingWarmup": 25948
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 315.67515710500186,
+    "p50Ms": 315.7243749999907,
+    "p95Ms": 506.52162499999395,
+    "maxMs": 557.0320840000059,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 328908800,
+    "cpuMicroseconds": {
+      "user": 41850452,
+      "system": 1646588
+    },
+    "sqlCountIncludingWarmup": 445,
+    "sqlMsIncludingWarmup": 22592
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 352.960011215001,
+    "p50Ms": 349.0511669999978,
+    "p95Ms": 512.1532919999736,
+    "maxMs": 762.816375000024,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 432685056,
+    "cpuMicroseconds": {
+      "user": 46549170,
+      "system": 1265963
+    },
+    "sqlCountIncludingWarmup": 445,
+    "sqlMsIncludingWarmup": 27763
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.383144129997963,
+    "p50Ms": 5.123083000013139,
+    "p95Ms": 7.530333000002429,
+    "maxMs": 13.143083000002662,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 430178304,
+    "cpuMicroseconds": {
+      "user": 272574,
+      "system": 71003
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 132
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "LEAGUE",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.330383550000697,
+    "p50Ms": 5.044374999997672,
+    "p95Ms": 6.652333999983966,
+    "maxMs": 14.938834000000497,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 443940864,
+    "cpuMicroseconds": {
+      "user": 253178,
+      "system": 61731
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 99
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 7.239375000004657,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.022
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.033
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.01
+      },
+      {
+        "planningMs": 0.034,
+        "executionMs": 0.045
+      },
+      {
+        "planningMs": 0.024,
+        "executionMs": 0.006
+      },
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.025
+      },
+      {
+        "planningMs": 0.019,
+        "executionMs": 0.02
+      },
+      {
+        "planningMs": 0.017,
+        "executionMs": 0.016
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 3.5777499999967404,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 1.174,
+        "executionMs": 0.669
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 20.58134165999887,
+    "p50Ms": 20.04245800001081,
+    "p95Ms": 26.636125000019092,
+    "maxMs": 68.11637499998324,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 615120896,
+    "cpuMicroseconds": {
+      "user": 3006104,
+      "system": 319733
+    },
+    "sqlCountIncludingWarmup": 2201,
+    "sqlMsIncludingWarmup": 792
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 12.026779155000986,
+    "p50Ms": 12.258374999975786,
+    "p95Ms": 15.082292000006419,
+    "maxMs": 20.843541999987792,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 598573056,
+    "cpuMicroseconds": {
+      "user": 1098713,
+      "system": 159750
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 896
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 10.52647664000091,
+    "p50Ms": 10.357292000000598,
+    "p95Ms": 13.50420799999847,
+    "maxMs": 19.670209000003524,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 571670528,
+    "cpuMicroseconds": {
+      "user": 932543,
+      "system": 138101
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 769
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.106855650000216,
+    "p50Ms": 6.104334000003291,
+    "p95Ms": 8.341875000012806,
+    "maxMs": 11.533791000023484,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 350355456,
+    "cpuMicroseconds": {
+      "user": 795563,
+      "system": 83786
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 318
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.356231489998754,
+    "p50Ms": 5.052499999990687,
+    "p95Ms": 7.086582999996608,
+    "maxMs": 15.109834000002593,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 303497216,
+    "cpuMicroseconds": {
+      "user": 653610,
+      "system": 94699
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 299
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.068767754999863,
+    "p50Ms": 6.026958000002196,
+    "p95Ms": 8.63058299999102,
+    "maxMs": 14.54458300000988,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 292700160,
+    "cpuMicroseconds": {
+      "user": 790835,
+      "system": 89799
+    },
+    "sqlCountIncludingWarmup": 441,
+    "sqlMsIncludingWarmup": 329
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.381353519998229,
+    "p50Ms": 4.132540999999037,
+    "p95Ms": 6.342709000018658,
+    "maxMs": 13.616499999974621,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 295272448,
+    "cpuMicroseconds": {
+      "user": 367034,
+      "system": 102323
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 13
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.329592249998822,
+    "p50Ms": 3.5195419999945443,
+    "p95Ms": 7.35175000000163,
+    "maxMs": 24.95358299999498,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 269631488,
+    "cpuMicroseconds": {
+      "user": 411375,
+      "system": 108610
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 71
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 5.146291999990353,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.013
+      },
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.041
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.011
+      },
+      {
+        "planningMs": 0.041,
+        "executionMs": 0.057
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.007
+      },
+      {
+        "planningMs": 0.024,
+        "executionMs": 0.026
+      },
+      {
+        "planningMs": 0.02,
+        "executionMs": 0.018
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.017
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 3.247666000010213,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.661,
+        "executionMs": 0.921
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 45.99571951500024,
+    "p50Ms": 44.36670799998683,
+    "p95Ms": 56.56049999999232,
+    "maxMs": 127.96466700002202,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 618758144,
+    "cpuMicroseconds": {
+      "user": 3130699,
+      "system": 381699
+    },
+    "sqlCountIncludingWarmup": 2209,
+    "sqlMsIncludingWarmup": 1011
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 13.395315224999795,
+    "p50Ms": 12.967749999981606,
+    "p95Ms": 17.071457999991253,
+    "maxMs": 22.223792000004323,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 626786304,
+    "cpuMicroseconds": {
+      "user": 665591,
+      "system": 103871
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1299
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 13.869358190001222,
+    "p50Ms": 13.340833999973256,
+    "p95Ms": 18.0537089999998,
+    "maxMs": 22.730833000008715,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 636485632,
+    "cpuMicroseconds": {
+      "user": 678636,
+      "system": 101789
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1341
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.69639291499916,
+    "p50Ms": 7.4103330000070855,
+    "p95Ms": 10.599916999984998,
+    "maxMs": 15.441749999998137,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 648019968,
+    "cpuMicroseconds": {
+      "user": 785591,
+      "system": 61764
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 381
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.124616450000904,
+    "p50Ms": 8.39137500000652,
+    "p95Ms": 14.404041000001598,
+    "maxMs": 28.10166700000991,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 638566400,
+    "cpuMicroseconds": {
+      "user": 875862,
+      "system": 72489
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 534
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 8.248626695000858,
+    "p50Ms": 7.934166999999434,
+    "p95Ms": 12.325167000002693,
+    "maxMs": 16.364208000013605,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 617398272,
+    "cpuMicroseconds": {
+      "user": 868023,
+      "system": 64410
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 431
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.8444581249996554,
+    "p50Ms": 4.60899999999674,
+    "p95Ms": 6.490749999997206,
+    "maxMs": 13.314374999987194,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 626442240,
+    "cpuMicroseconds": {
+      "user": 247300,
+      "system": 62933
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 96
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.762208759999921,
+    "p50Ms": 5.355332999984967,
+    "p95Ms": 8.841832999984035,
+    "maxMs": 16.694667000003392,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 620920832,
+    "cpuMicroseconds": {
+      "user": 375292,
+      "system": 72552
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 142
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 12.5971669999999,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.039,
+        "executionMs": 0.021
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.072
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.018
+      },
+      {
+        "planningMs": 0.039,
+        "executionMs": 0.126
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.006
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.017
+      },
+      {
+        "planningMs": 0.019,
+        "executionMs": 0.013
+      },
+      {
+        "planningMs": 0.016,
+        "executionMs": 0.011
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 6.30449999999837,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.813,
+        "executionMs": 2.108
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 28.876172504999996,
+    "p50Ms": 26.84237500000745,
+    "p95Ms": 36.974082999979146,
+    "maxMs": 123.35687499999767,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 396574720,
+    "cpuMicroseconds": {
+      "user": 4133089,
+      "system": 394601
+    },
+    "sqlCountIncludingWarmup": 2201,
+    "sqlMsIncludingWarmup": 1366
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 12.729716304999165,
+    "p50Ms": 12.462541999993846,
+    "p95Ms": 16.405790999997407,
+    "maxMs": 29.696750000002794,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 261931008,
+    "cpuMicroseconds": {
+      "user": 1109608,
+      "system": 194414
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1049
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 13.27377893500132,
+    "p50Ms": 13.367083000019193,
+    "p95Ms": 16.540459000010742,
+    "maxMs": 23.973999999987427,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 215482368,
+    "cpuMicroseconds": {
+      "user": 1202159,
+      "system": 221934
+    },
+    "sqlCountIncludingWarmup": 1321,
+    "sqlMsIncludingWarmup": 968
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 10.180442724999157,
+    "p50Ms": 9.110458999988623,
+    "p95Ms": 12.326084000000264,
+    "maxMs": 83.16125000000466,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 569802752,
+    "cpuMicroseconds": {
+      "user": 1391322,
+      "system": 367867
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 697
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.138222284999937,
+    "p50Ms": 8.820666000014171,
+    "p95Ms": 11.842499999998836,
+    "maxMs": 20.326790999999503,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 380518400,
+    "cpuMicroseconds": {
+      "user": 1143704,
+      "system": 134253
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 627
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.568066030000773,
+    "p50Ms": 8.824374999996508,
+    "p95Ms": 14.193624999985332,
+    "maxMs": 39.874374999984866,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 208306176,
+    "cpuMicroseconds": {
+      "user": 1131379,
+      "system": 143629
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 726
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.836961035000423,
+    "p50Ms": 5.323833000002196,
+    "p95Ms": 15.32458400001633,
+    "maxMs": 68.58874999999534,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 178896896,
+    "cpuMicroseconds": {
+      "user": 507894,
+      "system": 206550
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 258
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.278363149999641,
+    "p50Ms": 3.811958999984199,
+    "p95Ms": 6.787291999993613,
+    "maxMs": 30.003209000016795,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 193986560,
+    "cpuMicroseconds": {
+      "user": 368983,
+      "system": 125324
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 72
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 8.836000000010245,
+    "sqlCount": 8,
+    "plans": [
+      {
+        "planningMs": 0.048,
+        "executionMs": 0.019
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.091
+      },
+      {
+        "planningMs": 0.031,
+        "executionMs": 0.025
+      },
+      {
+        "planningMs": 0.049,
+        "executionMs": 0.158
+      },
+      {
+        "planningMs": 0.03,
+        "executionMs": 0.008
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.036
+      },
+      {
+        "planningMs": 0.029,
+        "executionMs": 0.024
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.019
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 6.591541000001598,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.732,
+        "executionMs": 1.798
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 81.75584232499837,
+    "p50Ms": 78.1797910000023,
+    "p95Ms": 120.68404200000805,
+    "maxMs": 166.52929099998437,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 357744640,
+    "cpuMicroseconds": {
+      "user": 5696401,
+      "system": 524000
+    },
+    "sqlCountIncludingWarmup": 2211,
+    "sqlMsIncludingWarmup": 4239
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 21.56178773499938,
+    "p50Ms": 18.803416000009747,
+    "p95Ms": 37.53108400001656,
+    "maxMs": 58.32858400000259,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 313278464,
+    "cpuMicroseconds": {
+      "user": 880263,
+      "system": 143891
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 2716
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 23.42924772000013,
+    "p50Ms": 21.608791000006022,
+    "p95Ms": 39.83250000001863,
+    "maxMs": 52.4478329999838,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 237273088,
+    "cpuMicroseconds": {
+      "user": 952048,
+      "system": 160032
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 2872
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 23.593999569999287,
+    "p50Ms": 22.277000000001863,
+    "p95Ms": 41.73870800001896,
+    "maxMs": 64.3497090000019,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 312197120,
+    "cpuMicroseconds": {
+      "user": 2189442,
+      "system": 124926
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1985
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 20.276492300001554,
+    "p50Ms": 19.42470800000592,
+    "p95Ms": 30.83687500000815,
+    "maxMs": 51.71887500002049,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 375521280,
+    "cpuMicroseconds": {
+      "user": 2183236,
+      "system": 118504
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1461
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 16.794587920000048,
+    "p50Ms": 16.240125000011176,
+    "p95Ms": 24.58687500000815,
+    "maxMs": 32.04833299998427,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 401342464,
+    "cpuMicroseconds": {
+      "user": 2086750,
+      "system": 88938
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1319
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.754864610000077,
+    "p50Ms": 5.406209000007948,
+    "p95Ms": 7.688916999992216,
+    "maxMs": 12.840999999985797,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 400080896,
+    "cpuMicroseconds": {
+      "user": 313737,
+      "system": 68252
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 119
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "WORLD_CUP",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.318143919999711,
+    "p50Ms": 6.631999999983236,
+    "p95Ms": 12.814500000007683,
+    "maxMs": 21.734207999979844,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 327221248,
+    "cpuMicroseconds": {
+      "user": 350371,
+      "system": 73668
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 241
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 5.5402089999988675,
+    "sqlCount": 9,
+    "plans": [
+      {
+        "planningMs": 0.034,
+        "executionMs": 0.016
+      },
+      {
+        "planningMs": 0.04,
+        "executionMs": 0.044
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.042,
+        "executionMs": 0.046
+      },
+      {
+        "planningMs": 0.032,
+        "executionMs": 0.014
+      },
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.036
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.017
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.018,
+        "executionMs": 0.013
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 2.586875000008149,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.574,
+        "executionMs": 0.668
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 25.42267413000096,
+    "p50Ms": 23.37745800000266,
+    "p95Ms": 38.34145800000988,
+    "maxMs": 82.23979200000758,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 390004736,
+    "cpuMicroseconds": {
+      "user": 3704107,
+      "system": 836008
+    },
+    "sqlCountIncludingWarmup": 2421,
+    "sqlMsIncludingWarmup": 893
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 16.83524897999887,
+    "p50Ms": 15.927166000008583,
+    "p95Ms": 22.812541000021156,
+    "maxMs": 77.39229099999648,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 238682112,
+    "cpuMicroseconds": {
+      "user": 1070183,
+      "system": 262562
+    },
+    "sqlCountIncludingWarmup": 1321,
+    "sqlMsIncludingWarmup": 1825
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 15.03749501999846,
+    "p50Ms": 15.456249999988358,
+    "p95Ms": 19.00191699998686,
+    "maxMs": 29.99220899998909,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 250183680,
+    "cpuMicroseconds": {
+      "user": 1231230,
+      "system": 249183
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1334
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.926173394999641,
+    "p50Ms": 6.989832999999635,
+    "p95Ms": 9.313582999981008,
+    "maxMs": 21.989125000021886,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 288899072,
+    "cpuMicroseconds": {
+      "user": 784726,
+      "system": 133232
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 384
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.12780669000058,
+    "p50Ms": 7.018333000014536,
+    "p95Ms": 9.669417000026442,
+    "maxMs": 21.328458000032697,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 275775488,
+    "cpuMicroseconds": {
+      "user": 821078,
+      "system": 145476
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 377
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 8.092317479997583,
+    "p50Ms": 8.099875000014435,
+    "p95Ms": 10.443957999988925,
+    "maxMs": 17.324999999953434,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 292241408,
+    "cpuMicroseconds": {
+      "user": 976556,
+      "system": 157205
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 480
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.869788320002263,
+    "p50Ms": 5.3831670000217855,
+    "p95Ms": 9.943208000040613,
+    "maxMs": 24.43170800001826,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 288260096,
+    "cpuMicroseconds": {
+      "user": 615184,
+      "system": 176058
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 48
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.369243940000888,
+    "p50Ms": 4.2585419999668375,
+    "p95Ms": 5.8189170000259764,
+    "maxMs": 19.37612500000978,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 288964608,
+    "cpuMicroseconds": {
+      "user": 381993,
+      "system": 108941
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 15
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 5.559834000014234,
+    "sqlCount": 9,
+    "plans": [
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.039
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.014
+      },
+      {
+        "planningMs": 0.034,
+        "executionMs": 0.037
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.014
+      },
+      {
+        "planningMs": 0.024,
+        "executionMs": 0.029
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.018
+      },
+      {
+        "planningMs": 0.018,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.017,
+        "executionMs": 0.016
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 3.8319159999955446,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.641,
+        "executionMs": 0.843
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 45.13718876499712,
+    "p50Ms": 44.635041999979876,
+    "p95Ms": 58.615250000031665,
+    "maxMs": 73.10695799998939,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 590069760,
+    "cpuMicroseconds": {
+      "user": 2784629,
+      "system": 317457
+    },
+    "sqlCountIncludingWarmup": 2430,
+    "sqlMsIncludingWarmup": 894
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.028082750001921,
+    "p50Ms": 13.62404200003948,
+    "p95Ms": 18.904334000020754,
+    "maxMs": 23.28224999998929,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 609042432,
+    "cpuMicroseconds": {
+      "user": 680567,
+      "system": 110115
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1423
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 18.15698463000037,
+    "p50Ms": 17.07600000000093,
+    "p95Ms": 24.772625000041444,
+    "maxMs": 44.00054199999431,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 604946432,
+    "cpuMicroseconds": {
+      "user": 833533,
+      "system": 121257
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 2173
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.467054189999471,
+    "p50Ms": 6.608874999976251,
+    "p95Ms": 14.083666999998968,
+    "maxMs": 20.27479100000346,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 568705024,
+    "cpuMicroseconds": {
+      "user": 653521,
+      "system": 72034
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 346
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.499885845000681,
+    "p50Ms": 7.051832999975886,
+    "p95Ms": 11.832416000019293,
+    "maxMs": 15.114624999987427,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 482263040,
+    "cpuMicroseconds": {
+      "user": 662323,
+      "system": 70158
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 319
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.784997895002598,
+    "p50Ms": 7.246458999987226,
+    "p95Ms": 15.340375000028871,
+    "maxMs": 17.785625000018626,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 382205952,
+    "cpuMicroseconds": {
+      "user": 742497,
+      "system": 74199
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 318
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.78637356000283,
+    "p50Ms": 5.213915999978781,
+    "p95Ms": 10.611375000036787,
+    "maxMs": 15.486499999999069,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 350437376,
+    "cpuMicroseconds": {
+      "user": 266695,
+      "system": 65143
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 164
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 16,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.004256469999964,
+    "p50Ms": 4.841917000012472,
+    "p95Ms": 5.938874999992549,
+    "maxMs": 15.946583000011742,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 351027200,
+    "cpuMicroseconds": {
+      "user": 235302,
+      "system": 58985
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 86
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 6.601667000039015,
+    "sqlCount": 9,
+    "plans": [
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.017
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.075
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.019
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.079
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.022
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.028
+      },
+      {
+        "planningMs": 0.024,
+        "executionMs": 0.021
+      },
+      {
+        "planningMs": 0.018,
+        "executionMs": 0.017
+      },
+      {
+        "planningMs": 0.015,
+        "executionMs": 0.015
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 4.703624999965541,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 1.453,
+        "executionMs": 2
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 29.48342372500076,
+    "p50Ms": 25.61958300002152,
+    "p95Ms": 38.75387499999488,
+    "maxMs": 226.04391599999508,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 349814784,
+    "cpuMicroseconds": {
+      "user": 3960557,
+      "system": 797334
+    },
+    "sqlCountIncludingWarmup": 2421,
+    "sqlMsIncludingWarmup": 1376
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.507153525000321,
+    "p50Ms": 8.79916699999012,
+    "p95Ms": 14.12362500000745,
+    "maxMs": 19.732041999988724,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 177471488,
+    "cpuMicroseconds": {
+      "user": 741744,
+      "system": 182866
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 643
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 16.378687505000855,
+    "p50Ms": 14.763042000005953,
+    "p95Ms": 25.55916599999182,
+    "maxMs": 60.02633399999468,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 206176256,
+    "cpuMicroseconds": {
+      "user": 1041400,
+      "system": 279644
+    },
+    "sqlCountIncludingWarmup": 1321,
+    "sqlMsIncludingWarmup": 1678
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.667859594999463,
+    "p50Ms": 6.270707999996375,
+    "p95Ms": 9.091000000014901,
+    "maxMs": 15.6954160000314,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 292126720,
+    "cpuMicroseconds": {
+      "user": 871866,
+      "system": 107852
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 466
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 7.626439815001795,
+    "p50Ms": 7.043666000012308,
+    "p95Ms": 10.047415999986697,
+    "maxMs": 19.37454200000502,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 342032384,
+    "cpuMicroseconds": {
+      "user": 924587,
+      "system": 120554
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 476
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.709829569998546,
+    "p50Ms": 6.5201250000391155,
+    "p95Ms": 9.05016699997941,
+    "maxMs": 10.847249999991618,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 379863040,
+    "cpuMicroseconds": {
+      "user": 841212,
+      "system": 88021
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 463
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 4.722145619999501,
+    "p50Ms": 4.192875000007916,
+    "p95Ms": 6.254541999951471,
+    "maxMs": 55.38933299999917,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 359923712,
+    "cpuMicroseconds": {
+      "user": 359957,
+      "system": 123296
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 78
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.972429150004173,
+    "p50Ms": 7.034125000005588,
+    "p95Ms": 10.669750000000931,
+    "maxMs": 38.10999999998603,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 349995008,
+    "cpuMicroseconds": {
+      "user": 669425,
+      "system": 188422
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 108
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 10.443375000031665,
+    "sqlCount": 9,
+    "plans": [
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.017
+      },
+      {
+        "planningMs": 0.028,
+        "executionMs": 0.087
+      },
+      {
+        "planningMs": 0.026,
+        "executionMs": 0.041
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.091
+      },
+      {
+        "planningMs": 0.033,
+        "executionMs": 0.038
+      },
+      {
+        "planningMs": 0.02,
+        "executionMs": 0.025
+      },
+      {
+        "planningMs": 0.02,
+        "executionMs": 0.014
+      },
+      {
+        "planningMs": 0.016,
+        "executionMs": 0.013
+      },
+      {
+        "planningMs": 0.02,
+        "executionMs": 0.017
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 9.073124999995343,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.716,
+        "executionMs": 2.43
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 54.00518687999749,
+    "p50Ms": 54.30987499997718,
+    "p95Ms": 66.37787500000559,
+    "maxMs": 76.43274999997811,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 623788032,
+    "cpuMicroseconds": {
+      "user": 3741845,
+      "system": 316585
+    },
+    "sqlCountIncludingWarmup": 2430,
+    "sqlMsIncludingWarmup": 1693
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 12.146248129998275,
+    "p50Ms": 11.475500000000466,
+    "p95Ms": 16.454833000025246,
+    "maxMs": 25.126209000009112,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 616087552,
+    "cpuMicroseconds": {
+      "user": 603352,
+      "system": 103936
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 934
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 19.66559249999962,
+    "p50Ms": 17.32395799999358,
+    "p95Ms": 38.938958000042476,
+    "maxMs": 45.84820899995975,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 459833344,
+    "cpuMicroseconds": {
+      "user": 917687,
+      "system": 138670
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 2426
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.261398955002077,
+    "p50Ms": 12.892625000036787,
+    "p95Ms": 24.560499999963213,
+    "maxMs": 41.294166999985464,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 340213760,
+    "cpuMicroseconds": {
+      "user": 1359494,
+      "system": 120347
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 942
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 11.185634124998177,
+    "p50Ms": 10.77895800000988,
+    "p95Ms": 16.322459000046365,
+    "maxMs": 20.346040999982506,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 368230400,
+    "cpuMicroseconds": {
+      "user": 1122044,
+      "system": 83112
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 792
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 12.294876835001341,
+    "p50Ms": 11.102167000004556,
+    "p95Ms": 19.278416000015568,
+    "maxMs": 35.63579099997878,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 371458048,
+    "cpuMicroseconds": {
+      "user": 1217414,
+      "system": 91813
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1004
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.188150359999563,
+    "p50Ms": 4.882125000003725,
+    "p95Ms": 7.193083000020124,
+    "maxMs": 12.882499999948777,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 343474176,
+    "cpuMicroseconds": {
+      "user": 277923,
+      "system": 70082
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 372
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 64,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.342278770000558,
+    "p50Ms": 5.006791999971028,
+    "p95Ms": 7.641416999977082,
+    "maxMs": 15.97870800003875,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 339935232,
+    "cpuMicroseconds": {
+      "user": 244935,
+      "system": 66783
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 101
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "strategy": "query",
+    "wallMs": 12.270208999980241,
+    "sqlCount": 9,
+    "plans": [
+      {
+        "planningMs": 0.034,
+        "executionMs": 0.013
+      },
+      {
+        "planningMs": 0.031,
+        "executionMs": 0.271
+      },
+      {
+        "planningMs": 0.027,
+        "executionMs": 0.016
+      },
+      {
+        "planningMs": 0.038,
+        "executionMs": 0.324
+      },
+      {
+        "planningMs": 0.025,
+        "executionMs": 0.078
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.028
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.018
+      },
+      {
+        "planningMs": 0.016,
+        "executionMs": 0.016
+      },
+      {
+        "planningMs": 0.015,
+        "executionMs": 0.015
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "strategy": "join",
+    "wallMs": 12.932666999986395,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.652,
+        "executionMs": 4.159
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 43.66812560500199,
+    "p50Ms": 41.56170799996471,
+    "p95Ms": 50.62858400004916,
+    "maxMs": 233.55741700000362,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 404209664,
+    "cpuMicroseconds": {
+      "user": 6124723,
+      "system": 812877
+    },
+    "sqlCountIncludingWarmup": 2422,
+    "sqlMsIncludingWarmup": 2937
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.855718559998204,
+    "p50Ms": 9.292833999963477,
+    "p95Ms": 13.381333000026643,
+    "maxMs": 20.277667000016663,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 363118592,
+    "cpuMicroseconds": {
+      "user": 853372,
+      "system": 170438
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 644
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.379941465001611,
+    "p50Ms": 13.909082999976818,
+    "p95Ms": 18.356792000005953,
+    "maxMs": 36.39429100003326,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 279658496,
+    "cpuMicroseconds": {
+      "user": 1220603,
+      "system": 164789
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1285
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 16.535945399999036,
+    "p50Ms": 15.571999999985565,
+    "p95Ms": 21.7506670000148,
+    "maxMs": 42.04574999999022,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 302399488,
+    "cpuMicroseconds": {
+      "user": 2038379,
+      "system": 272228
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1453
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 15.860789734999125,
+    "p50Ms": 15.223959000024479,
+    "p95Ms": 22.136624999984633,
+    "maxMs": 28.40512499999022,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 335609856,
+    "cpuMicroseconds": {
+      "user": 1937628,
+      "system": 249023
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1400
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 16.011202090001024,
+    "p50Ms": 15.749416999984533,
+    "p95Ms": 18.05124999996042,
+    "maxMs": 27.338959000015166,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 376995840,
+    "cpuMicroseconds": {
+      "user": 1901295,
+      "system": 164078
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 1582
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 3.6952516699995615,
+    "p50Ms": 3.503207999980077,
+    "p95Ms": 5.891250000044238,
+    "maxMs": 16.60866700002225,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 289701888,
+    "cpuMicroseconds": {
+      "user": 331532,
+      "system": 107625
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 61
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 1,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 3.8126716750048217,
+    "p50Ms": 3.278959000017494,
+    "p95Ms": 6.416040999989491,
+    "maxMs": 19.67316700000083,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 239091712,
+    "cpuMicroseconds": {
+      "user": 329344,
+      "system": 89615
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 52
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "strategy": "query",
+    "wallMs": 15.11141700000735,
+    "sqlCount": 9,
+    "plans": [
+      {
+        "planningMs": 0.031,
+        "executionMs": 0.016
+      },
+      {
+        "planningMs": 0.032,
+        "executionMs": 0.27
+      },
+      {
+        "planningMs": 0.026,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.042,
+        "executionMs": 0.356
+      },
+      {
+        "planningMs": 0.026,
+        "executionMs": 0.084
+      },
+      {
+        "planningMs": 0.023,
+        "executionMs": 0.03
+      },
+      {
+        "planningMs": 0.021,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.018,
+        "executionMs": 0.015
+      },
+      {
+        "planningMs": 0.022,
+        "executionMs": 0.015
+      }
+    ]
+  },
+  {
+    "event": "relation_read_diagnostic",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "strategy": "join",
+    "wallMs": 15.994249999988824,
+    "sqlCount": 1,
+    "plans": [
+      {
+        "planningMs": 0.655,
+        "executionMs": 5.093
+      }
+    ]
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "save",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 94.50659101500204,
+    "p50Ms": 87.9653330000001,
+    "p95Ms": 123.85458300000755,
+    "maxMs": 318.8702920000069,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 494845952,
+    "cpuMicroseconds": {
+      "user": 8595651,
+      "system": 955448
+    },
+    "sqlCountIncludingWarmup": 2426,
+    "sqlMsIncludingWarmup": 5652
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "list20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.632202665000513,
+    "p50Ms": 13.935834000003524,
+    "p95Ms": 20.661457999958657,
+    "maxMs": 29.797125000040978,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 428408832,
+    "cpuMicroseconds": {
+      "user": 710052,
+      "system": 139775
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 1707
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "list100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 21.027230184997023,
+    "p50Ms": 19.876250000030268,
+    "p95Ms": 28.404833000036888,
+    "maxMs": 31.7003750000149,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 446857216,
+    "cpuMicroseconds": {
+      "user": 1027664,
+      "system": 134186
+    },
+    "sqlCountIncludingWarmup": 1320,
+    "sqlMsIncludingWarmup": 2659
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "detail",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 35.28301372000016,
+    "p50Ms": 35.40849999996135,
+    "p95Ms": 53.93833299999824,
+    "maxMs": 79.00312499998836,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 423936000,
+    "cpuMicroseconds": {
+      "user": 3997304,
+      "system": 233840
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 2745
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "public",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 37.20299940500001,
+    "p50Ms": 33.91962500003865,
+    "p95Ms": 72.59899999998743,
+    "maxMs": 110.07462500000838,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 311853056,
+    "cpuMicroseconds": {
+      "user": 3691375,
+      "system": 254653
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 3201
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "preview",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 40.794046664999335,
+    "p50Ms": 32.15208300005179,
+    "p95Ms": 86.78116700000828,
+    "maxMs": 208.43237499997485,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 157106176,
+    "cpuMicroseconds": {
+      "user": 3826684,
+      "system": 241347
+    },
+    "sqlCountIncludingWarmup": 440,
+    "sqlMsIncludingWarmup": 3771
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "following20",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.533392670001777,
+    "p50Ms": 5.553790999983903,
+    "p95Ms": 9.454040999989957,
+    "maxMs": 40.9371669999673,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 245727232,
+    "cpuMicroseconds": {
+      "user": 309069,
+      "system": 129178
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 395
+  },
+  {
+    "event": "api_benchmark",
+    "stage": "candidate",
+    "format": "KNOCKOUT",
+    "size": 256,
+    "concurrency": 5,
+    "endpoint": "following100",
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 5.827731204998563,
+    "p50Ms": 5.137125000008382,
+    "p95Ms": 10.845917000027839,
+    "maxMs": 20.06516699999338,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "rssBytes": 277594112,
+    "cpuMicroseconds": {
+      "user": 277648,
+      "system": 82057
+    },
+    "sqlCountIncludingWarmup": 1100,
+    "sqlMsIncludingWarmup": 152
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "tournaments",
+    "limit": 20,
+    "concurrency": 1,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 10.86241790499998,
+    "p50Ms": 10.230250000000524,
+    "p95Ms": 19.03954199999953,
+    "maxMs": 24.78820799999994,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1200,
+    "sqlMs": 578
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "tournaments",
+    "limit": 20,
+    "concurrency": 5,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 12.080474345000058,
+    "p50Ms": 10.652000000000044,
+    "p95Ms": 20.29529100000036,
+    "maxMs": 47.81108300000051,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1200,
+    "sqlMs": 490
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "tournaments",
+    "limit": 100,
+    "concurrency": 1,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 9.28321787499996,
+    "p50Ms": 8.337000000000444,
+    "p95Ms": 16.609583999999813,
+    "maxMs": 39.78187500000058,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1200,
+    "sqlMs": 362
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "tournaments",
+    "limit": 100,
+    "concurrency": 5,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 16.33737295000008,
+    "p50Ms": 15.747665999999299,
+    "p95Ms": 22.759916999999405,
+    "maxMs": 28.570792000000438,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1200,
+    "sqlMs": 778
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "following",
+    "limit": 20,
+    "concurrency": 1,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.023465025000014,
+    "p50Ms": 5.613041999999041,
+    "p95Ms": 10.278166000000056,
+    "maxMs": 18.208583999999973,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1000,
+    "sqlMs": 235
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "following",
+    "limit": 20,
+    "concurrency": 5,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 8.84323083000002,
+    "p50Ms": 8.150374999999258,
+    "p95Ms": 13.132417000000714,
+    "maxMs": 23.243083000001207,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1000,
+    "sqlMs": 368
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "following",
+    "limit": 100,
+    "concurrency": 1,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 6.670660840000028,
+    "p50Ms": 6.140165999999226,
+    "p95Ms": 10.111833000000843,
+    "maxMs": 23.80841700000019,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1000,
+    "sqlMs": 291
+  },
+  {
+    "event": "populated_page_benchmark",
+    "endpoint": "following",
+    "limit": 100,
+    "concurrency": 5,
+    "rows": 110,
+    "measured": 200,
+    "warmup": 20,
+    "meanMs": 14.13063459500001,
+    "p50Ms": 13.724083000000974,
+    "p95Ms": 20.910667000000103,
+    "maxMs": 29.495708000000377,
+    "errors": 0,
+    "aborted": 0,
+    "over2sPercent": 0,
+    "sqlCount": 1000,
+    "sqlMs": 770
+  }
+]

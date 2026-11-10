@@ -2,10 +2,11 @@ import { SetMetadata } from "@nestjs/common";
 import { CookieOptions, Request, Response } from "express";
 import { ApplicationError } from "../common/application-error";
 import { ConfigurationService } from "../config/configuration.service";
-import { SessionCredentials } from "./auth.models";
+import { SessionRecord, SessionCredentials } from "./auth.models";
 export const Public = (): MethodDecorator & ClassDecorator =>
   SetMetadata("public", true);
 export type AuthedRequest = Request & {
+  resolvedSession?: SessionRecord | null;
   userId?: string;
   sessionId?: string;
   csrf?: string;

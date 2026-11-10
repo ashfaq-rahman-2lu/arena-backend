@@ -1,3 +1,4 @@
+import { include as aggregateInclude } from "../../src/tournaments/tournament-read.models";
 import { INestApplication } from "@nestjs/common";
 import assert from "node:assert/strict";
 import * as argon2 from "argon2";
@@ -2604,5 +2605,541 @@ test("OAuth initiation, email delivery and following mutations enforce bounded r
     } finally {
       await limited.close();
     }
+  }
+});
+
+test("slow API work has bounded aggregate reads and correlated timings", async (): Promise<void> => {
+  let t = await start(await create());
+  const m = required(t.matches[0]);
+  requestLogs.length = 0;
+  const response = await send(admin, "patch", `/matches/${m.id}/result`, {
+    homeScore: 2,
+    awayScore: 1,
+    expectedRevision: m.revision,
+    expectedTournamentRevision: t.revision,
+  })
+    .set("X-Request-ID", "performance-save")
+    .expect(200);
+  t = readResponse<TournamentView>(response, "TournamentView");
+  const span = z.object({
+    event: z.literal("operation_timing"),
+    requestId: z.string(),
+    operation: z.string(),
+    durationMs: z.number().nonnegative(),
+    outcome: z.enum(["completed", "failed"]),
+  });
+  const spans = requestLogs.flatMap(
+    (entry: unknown): z.infer<typeof span>[] => {
+      const parsed = span.safeParse(entry);
+      return parsed.success && parsed.data.requestId === "performance-save"
+        ? [parsed.data]
+        : [];
+    },
+  );
+  assert.equal(
+    spans.filter(
+      (entry: z.infer<typeof span>): boolean =>
+        entry.operation === "tournament.load",
+    ).length,
+    2,
+  );
+  assert.ok(
+    spans.some(
+      (entry: z.infer<typeof span>): boolean =>
+        entry.operation === "tournament.lock",
+    ),
+  );
+  assert.ok(
+    spans.some(
+      (entry: z.infer<typeof span>): boolean =>
+        entry.operation === "tournament.transaction",
+    ),
+  );
+  assert.ok(
+    spans.some(
+      (entry: z.infer<typeof span>): boolean =>
+        entry.operation === "tournament.response",
+    ),
+  );
+  const fresh = readResponse<TournamentView>(
+    await admin.get(`${base}/tournaments/${t.id}`).expect(200),
+    "TournamentView",
+  );
+  assert.deepEqual(t, fresh);
+});
+
+test("public viewing does not read stored private match stats", async (): Promise<void> => {
+  const t = await start(await create());
+  await db.match.update({
+    where: { id: required(t.matches[0]).id },
+    data: { stats: { privateDiagnostic: "not-public" } },
+  });
+  const response = await guest
+    .get(`${base}/public/tournaments/${t.publicId}`)
+    .expect(200);
+  const view = readResponse<TournamentView>(response, "TournamentView");
+  assert.ok(view.matches.every((m: Match): boolean => m.stats === null));
+  assert.ok(!JSON.stringify(response.body).includes("privateDiagnostic"));
+});
+
+interface LatencySample {
+  durationMs: number;
+  status: number;
+  aborted: boolean;
+}
+interface BenchmarkWorker {
+  tournament: TournamentView;
+}
+test(
+  "API latency benchmark",
+  { skip: process.env.ARENA_BENCHMARK !== "1" },
+  async (): Promise<void> => {
+    const sqlEvents: { duration: number }[] = [];
+    db.$on(
+      "query",
+      (event: import("@prisma/client").Prisma.QueryEvent): void => {
+        sqlEvents.push({ duration: event.duration });
+      },
+    );
+    process.stdout.write(
+      JSON.stringify({
+        event: "benchmark_environment",
+        deployedCommit: process.env.ARENA_DEPLOYED_COMMIT ?? "unverified",
+        apiRegion: process.env.ARENA_API_REGION ?? "local",
+        databaseRegion: process.env.ARENA_DATABASE_REGION ?? "local",
+        databaseHost: new URL(required(process.env.TEST_DATABASE_URL)).hostname,
+        postgres: await db.$queryRaw`SELECT version()`,
+        resourceScope:
+          "combined in-process HTTP client and server; local PostgreSQL container",
+      }) + "\n",
+    );
+    const measured = Number(process.env.ARENA_BENCHMARK_REQUESTS ?? "200");
+    assert.ok(Number.isInteger(measured) && measured >= 20);
+    for (const format of ["LEAGUE", "WORLD_CUP", "KNOCKOUT"] as const) {
+      for (const size of format === "KNOCKOUT" ? [16, 64, 256] : [16, 64]) {
+        for (const concurrency of [1, 5]) {
+          const workers: BenchmarkWorker[] = [];
+          for (let worker = 0; worker < concurrency; worker++) {
+            const entrants = Array.from(
+              { length: size },
+              (
+                _: unknown,
+                index: number,
+              ): {
+                name: string;
+                aliases: string[];
+                groupIndex: number | null;
+              } => ({
+                name: `Team ${index}`,
+                aliases: [],
+                groupIndex:
+                  format === "WORLD_CUP" ? Math.floor(index / 4) : null,
+              }),
+            );
+            const groups =
+              format === "WORLD_CUP"
+                ? Array.from(
+                    { length: size / 4 },
+                    (
+                      _: unknown,
+                      index: number,
+                    ): { name: string; qualifierCount: number } => ({
+                      name: `Group ${index}`,
+                      qualifierCount: 2,
+                    }),
+                  )
+                : [];
+            let t = await start(
+              await create(admin, {
+                ...initial,
+                name: `Latency ${format} ${size} ${worker}`,
+                format,
+                entrants,
+                groups,
+              }),
+            );
+            if (format === "KNOCKOUT") {
+              t = readResponse<TournamentView>(
+                await send(admin, "post", `/tournaments/${t.id}/rounds`, {
+                  expectedRevision: t.revision,
+                  method: "MANUAL",
+                  pairs: t.entrants.reduce<string[][]>(
+                    (
+                      pairs: string[][],
+                      entrant: Entrant,
+                      index: number,
+                    ): string[][] => {
+                      if (index % 2 === 0)
+                        pairs.push([
+                          entrant.id,
+                          required(t.entrants[index + 1]).id,
+                        ]);
+                      return pairs;
+                    },
+                    [],
+                  ),
+                  byes: [],
+                }).expect(201),
+                "TournamentView",
+              );
+            }
+            workers.push({ tournament: t });
+          }
+          for (const strategy of ["query", "join"] as const) {
+            const events: import("@prisma/client").Prisma.QueryEvent[] = [];
+            let capturing = true;
+            db.$on(
+              "query",
+              (event: import("@prisma/client").Prisma.QueryEvent): void => {
+                if (capturing && event.query.startsWith("SELECT"))
+                  events.push(event);
+              },
+            );
+            const started = performance.now();
+            await db.tournament.findUniqueOrThrow({
+              relationLoadStrategy: strategy,
+              where: { id: required(workers[0]).tournament.id },
+              include: aggregateInclude,
+            });
+            const wallMs = performance.now() - started;
+            capturing = false;
+            const plans: { planningMs: number; executionMs: number }[] = [];
+            for (const event of events) {
+              const parameters = z
+                .array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+                .parse(JSON.parse(event.params));
+              // The SQL is generated by Prisma, never supplied by a request; values stay bound.
+              const raw: unknown = await db.$queryRawUnsafe(
+                `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${event.query}`,
+                ...parameters,
+              );
+              const parsed = z
+                .array(
+                  z.object({
+                    "QUERY PLAN": z.array(
+                      z.object({
+                        "Planning Time": z.number(),
+                        "Execution Time": z.number(),
+                      }),
+                    ),
+                  }),
+                )
+                .parse(raw);
+              for (const row of parsed)
+                for (const plan of row["QUERY PLAN"])
+                  plans.push({
+                    planningMs: plan["Planning Time"],
+                    executionMs: plan["Execution Time"],
+                  });
+            }
+            process.stdout.write(
+              JSON.stringify({
+                event: "relation_read_diagnostic",
+                format,
+                size,
+                concurrency,
+                strategy,
+                wallMs,
+                sqlCount: events.length,
+                plans,
+              }) + "\n",
+            );
+          }
+          for (const endpoint of [
+            "save",
+            "list20",
+            "list100",
+            "detail",
+            "public",
+            "preview",
+            "following20",
+            "following100",
+          ] as const) {
+            const cpuStart = process.cpuUsage();
+            const samples: LatencySample[] = [];
+            let next = 0;
+            sqlEvents.length = 0;
+            const execute = async (worker: BenchmarkWorker): Promise<void> => {
+              while (next < measured + 20) {
+                const index = next++;
+                const t = worker.tournament,
+                  m = required(t.matches[0]);
+                const payload = {
+                  expectedRevision: m.revision,
+                  expectedTournamentRevision: t.revision,
+                  homeScore: 2,
+                  awayScore: 1,
+                };
+                const started = performance.now();
+                let status = 0,
+                  aborted = false;
+                try {
+                  const response =
+                    endpoint === "save" || endpoint === "preview"
+                      ? await send(
+                          admin,
+                          endpoint === "save" ? "patch" : "post",
+                          `/matches/${m.id}/${endpoint === "save" ? "result" : "correction-preview"}`,
+                          payload,
+                        )
+                      : await admin.get(
+                          `${base}/${endpoint.startsWith("list") ? `tournaments?limit=${endpoint === "list20" ? 20 : 100}` : endpoint.startsWith("following") ? `following?limit=${endpoint === "following20" ? 20 : 100}` : endpoint === "public" ? `public/tournaments/${t.publicId}` : `tournaments/${t.id}`}`,
+                        );
+                  status = response.status;
+                  if (endpoint === "save" && status === 200)
+                    worker.tournament = readResponse<TournamentView>(
+                      response,
+                      "TournamentView",
+                    );
+                } catch {
+                  aborted = true;
+                }
+                if (index >= 20)
+                  samples.push({
+                    durationMs: performance.now() - started,
+                    status,
+                    aborted,
+                  });
+              }
+            };
+            await Promise.all(
+              workers.map((worker: BenchmarkWorker): Promise<void> =>
+                execute(worker),
+              ),
+            );
+            const sorted = samples
+              .map((sample: LatencySample): number => sample.durationMs)
+              .sort((a: number, b: number): number => a - b);
+            const mean =
+              sorted.reduce(
+                (sum: number, value: number): number => sum + value,
+                0,
+              ) / sorted.length;
+            process.stdout.write(
+              JSON.stringify({
+                event: "api_benchmark",
+                stage: process.env.ARENA_BENCHMARK_STAGE ?? "candidate",
+                format,
+                size,
+                concurrency,
+                endpoint,
+                measured,
+                warmup: 20,
+                meanMs: mean,
+                p50Ms: sorted[Math.floor(sorted.length * 0.5)],
+                p95Ms:
+                  sorted[
+                    Math.min(
+                      sorted.length - 1,
+                      Math.floor(sorted.length * 0.95),
+                    )
+                  ],
+                maxMs: sorted.at(-1),
+                errors: samples.filter(
+                  (sample: LatencySample): boolean => sample.status >= 400,
+                ).length,
+                aborted: samples.filter(
+                  (sample: LatencySample): boolean => sample.aborted,
+                ).length,
+                over2sPercent:
+                  (100 *
+                    samples.filter(
+                      (sample: LatencySample): boolean =>
+                        sample.durationMs > 2000,
+                    ).length) /
+                  samples.length,
+                rssBytes: process.memoryUsage().rss,
+                cpuMicroseconds: process.cpuUsage(cpuStart),
+                sqlCountIncludingWarmup: sqlEvents.length,
+                sqlMsIncludingWarmup: sqlEvents.reduce(
+                  (sum: number, event: { duration: number }): number =>
+                    sum + event.duration,
+                  0,
+                ),
+              }) + "\n",
+            );
+            assert.equal(
+              samples.filter(
+                (sample: LatencySample): boolean =>
+                  sample.aborted || sample.status >= 400,
+              ).length,
+              0,
+            );
+            if (process.env.ARENA_BENCHMARK_ENFORCE === "1")
+              assert.ok(mean < 2000, `${endpoint} mean exceeds 2000ms`);
+          }
+        }
+      }
+    }
+  },
+);
+
+test("joined detail reads use bounded SQL and session lookup is request local", async (): Promise<void> => {
+  const t = await start(await create());
+  const queries: string[] = [];
+  db.$on("query", (event: import("@prisma/client").Prisma.QueryEvent): void => {
+    queries.push(event.query);
+  });
+  await admin.get(`${base}/tournaments/${t.id}`).expect(200);
+  assert.equal(
+    queries.length,
+    2,
+    "one joined session and one joined tournament query",
+  );
+  queries.length = 0;
+  requestLogs.length = 0;
+  await admin
+    .get(`${base}/auth/session`)
+    .set("X-Request-ID", "reuse-session")
+    .expect(200);
+  const timings = requestLogs.filter((entry: unknown): boolean => {
+    if (entry === null || typeof entry !== "object") return false;
+    return (
+      Reflect.get(entry, "requestId") === "reuse-session" &&
+      Reflect.get(entry, "operation") === "session.resolve"
+    );
+  });
+  assert.equal(timings.length, 1);
+  assert.equal(
+    queries.length,
+    2,
+    "one session/user and one identity existence query",
+  );
+  await db.session.deleteMany();
+  await admin.get(`${base}/tournaments/${t.id}`).expect(401);
+});
+
+test(
+  "API latency benchmark populated pages",
+  { skip: process.env.ARENA_BENCHMARK !== "1" },
+  async (): Promise<void> => {
+    const owner = await db.user.findUniqueOrThrow({
+      where: { email: "admin@example.test" },
+    });
+    const rows = await db.tournament.createManyAndReturn({
+      data: Array.from(
+        { length: 110 },
+        (
+          _: unknown,
+          index: number,
+        ): import("@prisma/client").Prisma.TournamentCreateManyInput => ({
+          publicId: `PERF${String(index).padStart(6, "0")}`,
+          ownerId: owner.id,
+          name: `Populated ${index}`,
+          game: "EFOOTBALL",
+          format: "LEAGUE",
+        }),
+      ),
+    });
+    await db.tournamentFollow.createMany({
+      data: rows.map(
+        (
+          row: (typeof rows)[number],
+        ): import("@prisma/client").Prisma.TournamentFollowCreateManyInput => ({
+          userId: owner.id,
+          tournamentId: row.id,
+        }),
+      ),
+    });
+    const sql: number[] = [];
+    db.$on(
+      "query",
+      (event: import("@prisma/client").Prisma.QueryEvent): void => {
+        sql.push(event.duration);
+      },
+    );
+    for (const endpoint of ["tournaments", "following"])
+      for (const limit of [20, 100])
+        for (const concurrency of [1, 5]) {
+          const samples: number[] = [];
+          const run = async (count: number): Promise<void> => {
+            let next = 0;
+            await Promise.all(
+              Array.from({ length: concurrency }, async (): Promise<void> => {
+                while (next++ < count) {
+                  const started = performance.now();
+                  const response = await admin
+                    .get(`${base}/${endpoint}?limit=${limit}`)
+                    .expect(200);
+                  const body = z
+                    .object({ items: z.array(z.unknown()), total: z.number() })
+                    .parse(response.body);
+                  assert.equal(body.items.length, limit);
+                  assert.equal(body.total, 110);
+                  samples.push(performance.now() - started);
+                }
+              }),
+            );
+          };
+          await run(20);
+          samples.length = 0;
+          sql.length = 0;
+          await run(200);
+          samples.sort((a: number, b: number): number => a - b);
+          const mean =
+            samples.reduce(
+              (sum: number, value: number): number => sum + value,
+              0,
+            ) / samples.length;
+          process.stdout.write(
+            JSON.stringify({
+              event: "populated_page_benchmark",
+              endpoint,
+              limit,
+              concurrency,
+              rows: 110,
+              measured: 200,
+              warmup: 20,
+              meanMs: mean,
+              p50Ms: samples[100],
+              p95Ms: samples[190],
+              maxMs: samples.at(-1),
+              errors: 0,
+              aborted: 0,
+              over2sPercent:
+                (100 *
+                  samples.filter((value: number): boolean => value > 2000)
+                    .length) /
+                200,
+              sqlCount: sql.length,
+              sqlMs: sql.reduce(
+                (sum: number, value: number): number => sum + value,
+                0,
+              ),
+            }) + "\n",
+          );
+          if (process.env.ARENA_BENCHMARK_ENFORCE === "1")
+            assert.ok(mean < 2000);
+        }
+  },
+);
+
+test("result transaction rolls back score, revision and audit when completion update fails", async (): Promise<void> => {
+  const t = await start(await create());
+  const m = required(t.matches[0]);
+  await db.tournament.update({
+    where: { id: t.id },
+    data: { name: "Rollback probe" },
+  });
+  const audits = await db.resultRevision.count({
+    where: { tournamentId: t.id },
+  });
+  await db.$executeRaw`ALTER TABLE "Tournament" ADD CONSTRAINT "latency_rollback_test" CHECK (name <> 'Rollback probe') NOT VALID`;
+  try {
+    await score(t, m, 2, 1).expect(500);
+    const persisted = await db.match.findUniqueOrThrow({ where: { id: m.id } });
+    assert.equal(persisted.homeScore, null);
+    assert.equal(persisted.awayScore, null);
+    assert.equal(persisted.revision, m.revision);
+    assert.equal(
+      (await db.tournament.findUniqueOrThrow({ where: { id: t.id } })).revision,
+      t.revision,
+    );
+    assert.equal(
+      await db.resultRevision.count({ where: { tournamentId: t.id } }),
+      audits,
+    );
+  } finally {
+    await db.$executeRaw`ALTER TABLE "Tournament" DROP CONSTRAINT "latency_rollback_test"`;
   }
 });

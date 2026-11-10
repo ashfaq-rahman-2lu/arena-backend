@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:browser-server": "npm run build && node dist/test/browser-server.js",
-    "test:tooling": "node --test scripts/tooling.test.mts"
+    "test:tooling": "node --test scripts/tooling.test.mts",
+    "benchmark:api": "npm run build && ARENA_BENCHMARK=1 node --test --test-name-pattern=\"API latency benchmark\" dist/test/api/api.test.js"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

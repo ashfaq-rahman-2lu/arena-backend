@@ -1,11 +1,25 @@
+import { OperationTimingService } from "../common/operation-timing.service";
 import { Injectable } from "@nestjs/common";
 import { DatabaseService } from "../database/database.service";
 import { ApplicationError } from "../common/application-error";
 import { FollowedTournament, FollowedTournamentPage } from "./following.models";
 @Injectable()
 export class FollowingRepository {
-  constructor(private readonly db: DatabaseService) {}
-  async list(
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly timing: OperationTimingService,
+  ) {}
+  list(
+    userId: string,
+    page: number,
+    limit: number,
+  ): Promise<FollowedTournamentPage> {
+    return this.timing.measure(
+      "following.list",
+      (): Promise<FollowedTournamentPage> => this.listPage(userId, page, limit),
+    );
+  }
+  private async listPage(
     userId: string,
     page: number,
     limit: number,
@@ -13,6 +27,7 @@ export class FollowingRepository {
     const where = { userId };
     const [rows, total] = await this.db.$transaction([
       this.db.tournamentFollow.findMany({
+        relationLoadStrategy: "join",
         where,
         orderBy: [{ createdAt: "desc" }, { tournamentId: "asc" }],
         skip: (page - 1) * limit,
